@@ -3,3 +3,4 @@ httpx==0.25.1
 prometheus_client==0.18.0
 python_jose==3.3.0
 requests==2.31.0
+requests_toolbelt==1.0.0
