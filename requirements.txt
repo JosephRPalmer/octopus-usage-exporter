@@ -1,0 +1,4 @@
+gql==3.4.1
+httpx==0.25.1
+prometheus_client==0.18.0
+python_jose==3.3.0
