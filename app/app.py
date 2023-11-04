@@ -161,7 +161,6 @@ if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     initial_load(str(os.environ.get("API_KEY")))
     logging.info("Starting to periodically read meters every {} seconds".format(str(os.environ.get("INTERVAL"))))
+    start_prometheus_server()
     read_meters(str(os.environ.get("API_KEY")), int(os.environ.get("INTERVAL")))
 
-
-    start_prometheus_server()
