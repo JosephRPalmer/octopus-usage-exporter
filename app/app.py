@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 requests_logger.setLevel(logging.WARNING)
 
-version = "0.0.3"
+version = "0.0.4"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -160,9 +160,14 @@ def read_meters(api_key, interval):
 def strip_device_id(id):
     return id.replace('-','')
 
+def interval_rate_check():
+    if (int(os.environ.get("INTERVAL")) >= 180):
+        logging.warn("Attention! If you proceed with an interval below 180 you will likely hit an API rate limit set by Octopus Energy.")
+
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     initial_load(str(os.environ.get("API_KEY")))
+    interval_rate_check()
     logging.info("Starting to periodically read meters every {} seconds".format(str(os.environ.get("INTERVAL"))))
     start_prometheus_server()
     read_meters(str(os.environ.get("API_KEY")), int(os.environ.get("INTERVAL")))
