@@ -162,7 +162,7 @@ def strip_device_id(id):
 
 def interval_rate_check():
     if (int(os.environ.get("INTERVAL")) >= 180):
-        logging.warn("Attention! If you proceed with an interval below 180 you will likely hit an API rate limit set by Octopus Energy.")
+        logging.warning("Attention! If you proceed with an interval below 180 you will likely hit an API rate limit set by Octopus Energy.")
 
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
