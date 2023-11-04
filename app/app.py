@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 requests_logger.setLevel(logging.WARNING)
 
-version = "0.0.2"
+version = "0.0.3"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -105,8 +105,11 @@ def get_energy_reading(meter_id, reading_type):
             }
         }
     """)
+    try:
+        reading_query = oe_client.execute(query, variable_values={"deviceId": meter_id})["smartMeterTelemetry"][0][reading_type]
+    except gql.transport.exceptions.TransportQueryError:
+        logging.warning("Possible rate limit hit, increase call interval")
 
-    reading_query = oe_client.execute(query, variable_values={"deviceId": meter_id})["smartMeterTelemetry"][0][reading_type]
     if (reading_query == None):
         reading_query = 0
     logging.info("Meter: {} - Type: {} - Reading: {}".format(meter_id, reading_type, reading_query))
