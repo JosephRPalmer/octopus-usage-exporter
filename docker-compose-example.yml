@@ -1,0 +1,14 @@
+version: "3.3"
+
+services:
+  octopus-usage-exporter:
+    image: josephrpalmer/octopus-usage-exporter
+    container_name: octopus-usage-exporter
+    network_mode: bridge
+    restart: always
+    environment:
+      - PROM_PORT=9120
+      - INTERVAL=30
+      - API_KEY=abc123
+    ports:
+      - "9120:9120"
