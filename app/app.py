@@ -1,7 +1,11 @@
 from prometheus_client import MetricsHandler, Gauge
+import httpx
+from datetime import datetime, timedelta
+from jose import jwt
 import logging
 import os
 import threading
+import time
 from http.server import HTTPServer
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
@@ -10,10 +14,15 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 requests_logger.setLevel(logging.WARNING)
 
-version = "0.0.1"
+version = "0.0.2"
 gauges = {}
-prom_port = int(os.environ.get('PROM_PORT', 9110))
-jwt = ""
+
+prom_port = int(os.environ.get('PROM_PORT', 9120))
+
+response = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json")
+key = response.json()
+
+
 headers = {}
 transport = RequestsHTTPTransport(url="https://api.octopus.energy/v1/graphql/#", headers=headers, verify=True,retries=3)
 
@@ -42,12 +51,6 @@ def start_prometheus_server():
     thread.start()
     logging.info("Exporting Prometheus /metrics/ on port %s", prom_port)
 
-
-def listen_and_relay(resend_dest, resend_port):
-
-    while True:
-
-        update_gauge("oex_{}".format(key), float(value))
 
 def get_device_id():
     query = gql("""
@@ -90,9 +93,7 @@ def get_device_id():
     meters["electric"] = electric_device
     meters["gas"] = gas_device
 
-def get_energy_reading(api_key, meter_id):
-    get_jwt(api_key)
-
+def get_energy_reading(meter_id, reading_type):
     query = gql("""
         query SmartMeterTelemetry($deviceId: String!) {
             smartMeterTelemetry(deviceId: $deviceId) {
@@ -105,9 +106,11 @@ def get_energy_reading(api_key, meter_id):
         }
     """)
 
-    reading_query = oe_client.execute(query, variable_values={"deviceId": meter_id})["smartMeterTelemetry"][0]["demand"]
-    logging.info("Meter: {} - Reading: {}".format(meter_id, reading_query))
-
+    reading_query = oe_client.execute(query, variable_values={"deviceId": meter_id})["smartMeterTelemetry"][0][reading_type]
+    if (reading_query == None):
+        reading_query = 0
+    logging.info("Meter: {} - Type: {} - Reading: {}".format(meter_id, reading_type, reading_query))
+    return reading_query
 def update_gauge(key, value):
     if key not in gauges:
         gauges[key] = Gauge(key, 'Octopus Energy gauge')
@@ -132,10 +135,33 @@ def initial_load(api_key):
     get_jwt(api_key)
     get_device_id()
 
+def check_jwt(api_key):
+    user_info = jwt.decode(headers["Authorization"].split(" ")[1], key=key , algorithms=["RS256"])
+
+
+    if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=5)):
+        logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
+    else:
+        get_jwt(api_key)
+
+def read_meters(api_key, interval):
+    while True:
+        check_jwt(api_key)
+        for i in "electric", "gas":
+            update_gauge("oe_consumption_{}_{}".format(strip_device_id(meters[i]), i),float(get_energy_reading(meters[i], "consumption")))
+
+        update_gauge("oe_demand_{}_electric".format(strip_device_id(meters["electric"])),float(get_energy_reading(meters["electric"], "demand")))
+
+        time.sleep(interval)
+
+def strip_device_id(id):
+    return id.replace('-','')
+
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     initial_load(str(os.environ.get("API_KEY")))
-    get_energy_reading(str(os.environ.get("API_KEY")), meters["electric"])
+    logging.info("Starting to periodically read meters every {} seconds".format(str(os.environ.get("INTERVAL"))))
+    read_meters(str(os.environ.get("API_KEY")), int(os.environ.get("INTERVAL")))
 
 
-    #start_prometheus_server()
+    start_prometheus_server()
