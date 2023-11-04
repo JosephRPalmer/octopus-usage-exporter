@@ -1,0 +1,47 @@
+mutation ObtainKrakenToken($apiKey: String!) {
+  obtainKrakenToken(input: { apiKey: $apiKey }) {
+    token
+  }
+}
+
+
+query Account($accountNumber: String!) {
+  account(accountNumber: $accountNumber) {
+    id
+    electricityAgreements {
+      id
+      meterPoint {
+        id
+        meters {
+          smartImportElectricityMeter {
+            id
+            deviceId
+          }
+        }
+      }
+    }
+    gasAgreements {
+      id
+      meterPoint {
+        id
+        meters {
+          id
+          smartGasMeter {
+            id
+            deviceId
+          }
+        }
+      }
+    }
+  }
+}
+
+query SmartMeterTelemetry($deviceId: String!) {
+  smartMeterTelemetry(deviceId: $deviceId) {
+    readAt
+    consumption
+    demand
+    consumptionDelta
+    costDelta
+  }
+}
