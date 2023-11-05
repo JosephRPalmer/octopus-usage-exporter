@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 requests_logger.setLevel(logging.WARNING)
 
-version = "0.0.5"
+version = "0.0.6"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -174,8 +174,8 @@ def interval_rate_check():
         interval = 3600
     else:
         interval = int(os.environ.get("INTERVAL"))
-        if (interval >= 180):
-            logging.warning("Attention! If you proceed with an interval below 180 you will likely hit an API rate limit set by Octopus Energy.")
+        if (interval <= 180):
+            logging.warning("Attention! If you proceed with an interval below 60 you will likely hit an API rate limit set by Octopus Energy.")
 
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
