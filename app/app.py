@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 requests_logger.setLevel(logging.WARNING)
 
-version = "0.0.6"
+version = "0.0.7"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -91,7 +91,7 @@ def get_device_id():
     """)
     account_query = oe_client.execute(query, variable_values={"accountNumber": "A-23FBB1B1"})
     meters.append(energy_meter("electric_meter", account_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"][0]["smartImportElectricityMeter"]["deviceId"], "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"]))
-    meters.append(energy_meter("gas_meter", account_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 3600, datetime.now(), ["consumption"]))
+    meters.append(energy_meter("gas_meter", account_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now(), ["consumption"]))
 
     for meter in meters:  # Iterate directly over the objects in the list
         logging.info("Meter: {} - ID: {} added".format(meter.meter_type, meter.device_id))
@@ -170,8 +170,8 @@ def strip_device_id(id):
 
 def interval_rate_check():
     global interval
-    if (int(os.environ.get("INTERVAL")) > 3600):
-        interval = 3600
+    if (int(os.environ.get("INTERVAL")) > 1800):
+        interval = 1800
     else:
         interval = int(os.environ.get("INTERVAL"))
         if (interval <= 180):
