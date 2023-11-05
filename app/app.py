@@ -15,8 +15,9 @@ from energy_meter import energy_meter
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 requests_logger.setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.7"
+version = "0.0.8"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
