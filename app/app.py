@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.10"
+version = "0.0.11"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -151,7 +151,7 @@ def check_jwt(api_key):
     user_info = jwt.decode(headers["Authorization"].split(" ")[1], key=key , algorithms=["RS256"])
 
 
-    if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=5)):
+    if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=2)):
         logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
     else:
         get_jwt(api_key)
