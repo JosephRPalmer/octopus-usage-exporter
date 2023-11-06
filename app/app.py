@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.11"
+version = "0.0.12"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -112,7 +112,8 @@ def get_energy_reading(meter_id, reading_types):
         }
     """)
     try:
-        reading_query_returned = oe_client.execute(query, variable_values={"deviceId": meter_id})["smartMeterTelemetry"][0]
+        reading_query_ex = oe_client.execute(query, variable_values={"deviceId": meter_id})["smartMeterTelemetry"]
+        reading_query_returned = reading_query_ex[0]
         for wanted_type in reading_types:
             if reading_query_returned[wanted_type] == None:
                 output_readings[wanted_type] = 0
@@ -121,7 +122,8 @@ def get_energy_reading(meter_id, reading_types):
             logging.info("Meter: {} - Type: {} - Reading: {}".format(meter_id, wanted_type, reading_query_returned[wanted_type]))
     except TransportQueryError:
         logging.warning("Possible rate limit hit, increase call interval")
-
+    except IndexError:
+        logging.error("Index out of range - {}".format(reading_query_ex))
     return output_readings
 def update_gauge(key, value):
     if key not in gauges:
