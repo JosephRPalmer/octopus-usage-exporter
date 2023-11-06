@@ -9,6 +9,7 @@ import time
 from http.server import HTTPServer
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
+from gql.transport.exceptions import TransportQueryError
 
 from energy_meter import energy_meter
 
@@ -17,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.8"
+version = "0.0.10"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -118,7 +119,7 @@ def get_energy_reading(meter_id, reading_types):
             else:
                 output_readings[wanted_type] = reading_query_returned[wanted_type]
             logging.info("Meter: {} - Type: {} - Reading: {}".format(meter_id, wanted_type, reading_query_returned[wanted_type]))
-    except gql.transport.exceptions.TransportQueryError:
+    except TransportQueryError:
         logging.warning("Possible rate limit hit, increase call interval")
 
     return output_readings
