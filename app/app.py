@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.13"
+version = "0.0.14"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -123,7 +123,8 @@ def get_energy_reading(meter_id, reading_types):
     except TransportQueryError:
         logging.warning("Possible rate limit hit, increase call interval")
     except IndexError:
-        logging.error("Index out of range on Octopus API call - {}".format(reading_query_ex))
+        if not reading_query_ex["smartMeterTelemetry"]:
+            logging.error("Octopus API returned no data for {}".format(meter_id))
     return output_readings
 def update_gauge(key, value):
     if key not in gauges:
