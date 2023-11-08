@@ -93,7 +93,7 @@ def get_device_id():
     """)
     account_query = oe_client.execute(query, variable_values={"accountNumber": "A-23FBB1B1"})
     meters.append(energy_meter("electric_meter", account_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"][0]["smartImportElectricityMeter"]["deviceId"], "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"]))
-    meters.append(energy_meter("gas_meter", account_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 2700, datetime.now(), ["consumption"]))
+    meters.append(energy_meter("gas_meter", account_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now(), ["consumption"]))
 
     for meter in meters:  # Iterate directly over the objects in the list
         logging.info("Meter: {} - ID: {} added".format(meter.meter_type, meter.device_id))
