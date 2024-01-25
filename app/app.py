@@ -22,6 +22,7 @@ version = "0.0.15"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
+account_number = os.environ.get('ACCOUNT_NUMBER')
 
 response = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json")
 key = response.json()
@@ -91,7 +92,7 @@ def get_device_id():
             }
             }
     """)
-    account_query = oe_client.execute(query, variable_values={"accountNumber": "A-23FBB1B1"})
+    account_query = oe_client.execute(query, variable_values={"accountNumber": account_number})
     meters.append(energy_meter("electric_meter", account_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"][0]["smartImportElectricityMeter"]["deviceId"], "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"]))
     meters.append(energy_meter("gas_meter", account_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now(), ["consumption"]))
 

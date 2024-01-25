@@ -11,6 +11,7 @@ Prometheus exporter for Octopus Energy metrics. Works best when coupled with an 
       - PROM_PORT=9120 (Prometheus Port)
       - INTERVAL=300 (Scraping interval)
       - API_KEY=abc123 (Octopus Energy API key)
+      - ACCOUNT_NUMBER=A-ABC12E04 (Octopus Energy Account number)
 - Ensure the ports exposed in the docker compose match the port referenced under PROM_PORT
 
 ## Docker Compose Example
@@ -28,6 +29,7 @@ services:
       - PROM_PORT=9120
       - INTERVAL=30
       - API_KEY=abc123
+      - ACCOUNT_NUMBER=A-ABC12E04
     ports:
       - "9120:9120"
 
