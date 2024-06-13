@@ -10,5 +10,8 @@ services:
       - PROM_PORT=9120
       - INTERVAL=30
       - API_KEY=abc123
+      - GAS=True
+      - ELECTRIC=True
+      - ACCOUNT_NUMBER=A-ABC12E04
     ports:
       - "9120:9120"

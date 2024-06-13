@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.16"
+version = "0.0.17"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -164,12 +164,16 @@ def initial_load(api_key, gas, electric):
     get_device_id(gas, electric)
 
 def check_jwt(api_key):
-    user_info = jwt.decode(headers["Authorization"].split(" ")[1], key=key , algorithms=["RS256"])
 
-
-    if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=2)):
-        logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
-    else:
+    try:
+        user_info = jwt.decode(headers["Authorization"].split(" ")[1], key=key , algorithms=["RS256"])
+        if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=2)):
+            logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
+        else:
+            get_jwt(api_key)
+    except jwt.ExpiredSignature:
+        get_jwt(api_key)
+    except jwt.JWTError:
         get_jwt(api_key)
 
 def read_meters(api_key):
