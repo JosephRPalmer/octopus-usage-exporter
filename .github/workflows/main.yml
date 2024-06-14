@@ -35,6 +35,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
       - name: Tag Docker image for GitHub Container Registry
-        run: docker tag ${{ imagename }}/octopus-usage-exporter:latest ghcr.io/${{ imagename }}:latest
+        run: docker tag ${{ steps.imagename.outputs.lowercase }}/octopus-usage-exporter:latest ghcr.io/${{ steps.imagename.outputs.lowercase }}:latest
       - name: Push Docker image to GitHub Container Registry
-        run: docker push ghcr.io/${{ imagename }}:latest
+        run: docker push ghcr.io/${{ steps.imagename.outputs.lowercase }}:latest
