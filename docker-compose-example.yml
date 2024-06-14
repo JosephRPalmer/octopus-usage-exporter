@@ -2,7 +2,7 @@ version: "3.3"
 
 services:
   octopus-usage-exporter:
-    image: josephrpalmer/octopus-usage-exporter
+    image:  ghcr.io/josephrpalmer/octopus-usage-exporter:latest
     container_name: octopus-usage-exporter
     network_mode: bridge
     restart: always
