@@ -25,7 +25,7 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: docker push ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest
       - id: imagename
-        uses: profy12/lowercase-action@0.6
+        uses: vishalmamidi/lowercase-action@v1
         with:
           string: ${{ github.repository }}
       - name: Login to GitHub Container Registry
@@ -35,6 +35,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
       - name: Tag Docker image for GitHub Container Registry
-        run: docker tag ${{ steps.imagename.outputs.text }}/octopus-usage-exporter:latest ghcr.io/${{ steps.imagename.outputs.text }}:latest
+        run: docker tag ${{ steps.imagename.outputs.lowercase }}/octopus-usage-exporter:latest ghcr.io/${{ steps.imagename.outputs.lowercase }}:latest
       - name: Push Docker image to GitHub Container Registry
-        run: docker push ghcr.io/${{ steps.imagename.outputs.text }}:latest
+        run: docker push ghcr.io/${{ steps.imagename.outputs.lowercase }}:latest
