@@ -24,6 +24,10 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: docker push ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest
+      - id: imagename
+        uses: ASzc/change-string-case-action@v2
+        with:
+          string: ${{ github.repository }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
         with:
@@ -31,6 +35,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
       - name: Tag Docker image for GitHub Container Registry
-        run: docker tag ${{ github.repository }}/octopus-usage-exporter:latest ghcr.io/${{ github.repository }}:latest
+        run: docker tag ${{ imagename }}/octopus-usage-exporter:latest ghcr.io/${{ imagename }}:latest
       - name: Push Docker image to GitHub Container Registry
-        run: docker push ghcr.io/${{ github.repository }}:latest
+        run: docker push ghcr.io/${{ imagename }}:latest
