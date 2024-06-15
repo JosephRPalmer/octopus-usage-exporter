@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.18"
+version = "0.0.19"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -49,7 +49,7 @@ class PrometheusEndpointServer(threading.Thread):
 def start_prometheus_server():
     try:
         httpd = HTTPServer(("0.0.0.0", prom_port), MetricsHandler)
-    except (OSError, socket.error) as e:
+    except (OSError) as e:
         logging.error("Failed to start Prometheus server: %s", str(e))
         return
 
@@ -171,7 +171,7 @@ def check_jwt(api_key):
             logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
         else:
             get_jwt(api_key)
-    except (jwt.ExpiredSignatureError, jwt.DecodeError, jwt.InvalidTokenError):
+    except (jwt.ExpiredSignatureError, jwt.JWTError):
         get_jwt(api_key)
 
 
