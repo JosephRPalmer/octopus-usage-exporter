@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.19"
+version = "0.0.20"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -171,7 +171,8 @@ def check_jwt(api_key):
             logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
         else:
             get_jwt(api_key)
-    except (jwt.ExpiredSignatureError, jwt.JWTError):
+    except (jwt.ExpiredSignatureError, jwt.JWTError) as e:
+        logging.error("Hit error {} - {}, refreshing JWT".format(e.__class__.__name__, e))
         get_jwt(api_key)
 
 
