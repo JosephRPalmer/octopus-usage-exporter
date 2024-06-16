@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.20"
+version = "0.0.21"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -145,6 +145,12 @@ def update_gauge(key, value):
     gauges[key].set(value)
 
 def get_jwt(api_key):
+    logging.info("Dropping headers")
+    headers.clear()
+    if not bool(headers):
+        logging.info("Dropped headers, refreshing JWT")
+    else:
+        logging.warn("Failed to drop headers, trying to refresh JWT anyway")
     query = gql("""
         mutation ObtainKrakenToken($apiKey: String!) {
             obtainKrakenToken(input: { APIKey: $apiKey}) {
