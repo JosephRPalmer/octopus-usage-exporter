@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.17"
+version = "0.0.21"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -49,7 +49,7 @@ class PrometheusEndpointServer(threading.Thread):
 def start_prometheus_server():
     try:
         httpd = HTTPServer(("0.0.0.0", prom_port), MetricsHandler)
-    except (OSError, socket.error) as e:
+    except (OSError) as e:
         logging.error("Failed to start Prometheus server: %s", str(e))
         return
 
@@ -145,6 +145,12 @@ def update_gauge(key, value):
     gauges[key].set(value)
 
 def get_jwt(api_key):
+    logging.info("Dropping headers")
+    headers.clear()
+    if not bool(headers):
+        logging.info("Dropped headers, refreshing JWT")
+    else:
+        logging.warn("Failed to drop headers, trying to refresh JWT anyway")
     query = gql("""
         mutation ObtainKrakenToken($apiKey: String!) {
             obtainKrakenToken(input: { APIKey: $apiKey}) {
@@ -171,7 +177,8 @@ def check_jwt(api_key):
             logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
         else:
             get_jwt(api_key)
-    except (jwt.ExpiredSignatureError, jwt.DecodeError, jwt.InvalidTokenError):
+    except (jwt.ExpiredSignatureError, jwt.JWTError) as e:
+        logging.error("Hit error {} - {}, refreshing JWT".format(e.__class__.__name__, e))
         get_jwt(api_key)
 
 
