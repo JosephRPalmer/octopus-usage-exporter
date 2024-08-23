@@ -110,7 +110,7 @@ def get_device_id(gas, electric):
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
     if gas:
         gas_query = oe_client.execute(gas_query, variable_values={"accountNumber": account_number})
-        meters.append(energy_meter("gas_meter", gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now(), ["consumption"]))
+        meters.append(energy_meter("gas_meter", gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"]))
         logging.info("Gas Meter has been found - {}".format(gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"]))
 
 
