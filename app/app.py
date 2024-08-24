@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.21"
+version = "0.0.22"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
