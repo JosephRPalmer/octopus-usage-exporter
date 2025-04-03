@@ -38,3 +38,11 @@ services:
       - "9120:9120"
 
 ```
+
+## Grafana Dashboard Example
+
+An example [grafana dashboard](./examples/grafana_dashboard.json) can be found in the 
+examples directory. This shows stats relating to current, max, min and average consumption, as well
+as total consumption.
+
+![](./examples/grafana_dashboard.png)
