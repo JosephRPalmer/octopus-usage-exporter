@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.22"
+version = "0.0.23"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -110,8 +110,11 @@ def get_device_id(gas, electric):
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
     if gas:
         gas_query = oe_client.execute(gas_query, variable_values={"accountNumber": account_number})
-        meters.append(energy_meter("gas_meter", gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"]))
-        logging.info("Gas Meter has been found - {}".format(gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"]))
+        usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
+                               if m['smartGasMeter'] is not None]
+        selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
+        meters.append(energy_meter("gas_meter", selected_smart_meter_device_id, "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"]))
+        logging.info("Gas Meter has been found - {}".format(selected_smart_meter_device_id))
 
 
 def get_energy_reading(meter_id, reading_types):
