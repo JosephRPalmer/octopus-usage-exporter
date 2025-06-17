@@ -29,7 +29,7 @@ services:
     restart: always
     environment:
       - PROM_PORT=9120
-      - INTERVAL=30
+      - INTERVAL=60
       - API_KEY=abc123
       - ACCOUNT_NUMBER=A-ABC12E04
       - GAS=True
@@ -41,7 +41,7 @@ services:
 
 ## Grafana Dashboard Example
 
-An example [grafana dashboard](./examples/grafana_dashboard.json) can be found in the 
+An example [grafana dashboard](./examples/grafana_dashboard.json) can be found in the
 examples directory. This shows stats relating to current, max, min and average consumption, as well
 as total consumption.
 
