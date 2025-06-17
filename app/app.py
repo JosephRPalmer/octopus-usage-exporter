@@ -103,11 +103,14 @@ def get_device_id(gas, electric):
 
     if electric:
         electric_query = oe_client.execute(elec_query, variable_values={"accountNumber": account_number})
-        meters.append(energy_meter("electric_meter", electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"][0]["smartImportElectricityMeter"]["deviceId"], "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"]))
-        logging.info("Electricity Meter has been found - {}".format(electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"][0]["smartImportElectricityMeter"]["deviceId"]))
+        usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
+                               if m['smartImportElectricityMeter'] is not None]
+        selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
+        meters.append(energy_meter("electric_meter", selected_smart_meter_device_id, "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"]))
+        logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
     if gas:
         gas_query = oe_client.execute(gas_query, variable_values={"accountNumber": account_number})
-        meters.append(energy_meter("gas_meter", gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now(), ["consumption"]))
+        meters.append(energy_meter("gas_meter", gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"], "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"]))
         logging.info("Gas Meter has been found - {}".format(gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"][0]["smartGasMeter"]["deviceId"]))
 
 
