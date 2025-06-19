@@ -2,7 +2,8 @@ name: Docker Image CI
 
 on:
   push:
-    branches: ["main"]
+    tags:
+      - "*"
 
 jobs:
   build_and_push:
@@ -33,7 +34,9 @@ jobs:
       - name: Tag Docker image for GitHub Container Registry
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: docker tag ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest ghcr.io/${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest
+        run: |
+          docker tag ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest ghcr.io/${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest
+          docker tag ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest ghcr.io/${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:${GITHUB_REF#refs/tags/}
       - name: Push Docker image to GitHub Container Registry
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
