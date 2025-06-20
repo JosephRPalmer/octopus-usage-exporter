@@ -36,7 +36,9 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           docker tag ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest ghcr.io/${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest
-          docker tag ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest ghcr.io/${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:${GITHUB_REF#refs/tags/}
+          TAG_NAME=${{ github.event.ref }}
+          TAG_NAME=${TAG_NAME#refs/tags/}
+          docker tag ${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:latest ghcr.io/${{ env.DOCKER_USERNAME }}/octopus-usage-exporter:${TAG_NAME}
       - name: Push Docker image to GitHub Container Registry
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
