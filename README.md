@@ -14,7 +14,7 @@ Prometheus exporter for Octopus Energy metrics. Works best when coupled with an 
       - ACCOUNT_NUMBER=A-ABC12E04 (Octopus Energy Account number)
       - GAS=True (Gas stat scraping)
       - ELECTRIC=True (Electric stat scraping)
-      - NG_METRICS=False (New for 0.0.24, metrics move to use a proper label format outside of metric names)
+      - NG_METRICS=False (New for 0.0.24, metrics move to use a proper label format outside of metric names. Defaults to false with existing metric format, setting to True will enable new formatting. This behaviour will change in future major release.)
 - Ensure the ports exposed in the docker compose match the port referenced under PROM_PORT
 
 ## Docker Compose Example
