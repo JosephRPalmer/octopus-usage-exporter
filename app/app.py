@@ -156,14 +156,10 @@ def update_gauge(key, value):
 
 
 def update_gauge_ng(key: str, value: int, labels_dict: dict):
-    logging.debug("Setting gauge {} to value {} with labels {}".format(key, value, labels_dict))
-
     if not gauges.get(key):
         gauges[key] = Gauge(key, 'Octopus Energy gauge', labels_dict.keys() if labels_dict else {})
 
-
     if labels_dict:
-        logging.info("Setting gauge {} with labels {}".format(key, labels_dict))
         gauges[key].labels(**labels_dict).set(value)
     else:
         gauges[key].set(value)
