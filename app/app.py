@@ -188,7 +188,7 @@ def get_jwt(api_key):
 def initial_load(api_key, gas, electric, ng_metrics):
     get_jwt(api_key)
     get_device_id(gas, electric)
-    sysconfig["ng_metrics"] = True if ng_metrics else False
+    sysconfig["ng_metrics"] = ng_metrics
 
 def check_jwt(api_key):
 
