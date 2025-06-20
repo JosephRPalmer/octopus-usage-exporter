@@ -6,3 +6,11 @@ class energy_meter:
         self.polling_interval = polling_interval
         self.last_called = last_called
         self.reading_types = reading_types
+
+    def return_labels(self):
+        labels = {}
+        if self.device_id:
+            labels['device_id'] = self.device_id
+        if self.meter_type:
+            labels['meter_type'] = self.meter_type
+        return labels
