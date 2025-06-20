@@ -1,6 +1,6 @@
 gql==3.4.1
 httpx==0.25.1
-prometheus_client==0.18.0
+prometheus_client==0.22.1
 python_jose==3.3.0
 requests==2.32.4
 requests_toolbelt==1.0.0

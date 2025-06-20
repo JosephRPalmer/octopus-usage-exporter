@@ -13,5 +13,6 @@ services:
       - GAS=True
       - ELECTRIC=True
       - ACCOUNT_NUMBER=A-ABC12E04
+      - NG_METRICS=False
     ports:
       - "9120:9120"

@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.23"
+version = "0.0.24"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -32,6 +32,8 @@ headers = {}
 transport = RequestsHTTPTransport(url="https://api.octopus.energy/v1/graphql/#", headers=headers, verify=True,retries=3)
 
 meters = []
+
+sysconfig = {}
 
 interval = 1800
 
@@ -133,6 +135,7 @@ def get_energy_reading(meter_id, reading_types):
     try:
         reading_query_ex = oe_client.execute(query, variable_values={"deviceId": meter_id})
         reading_query_returned = reading_query_ex["smartMeterTelemetry"][0]
+
         for wanted_type in reading_types:
             if reading_query_returned[wanted_type] == None:
                 output_readings[wanted_type] = 0
@@ -145,10 +148,25 @@ def get_energy_reading(meter_id, reading_types):
         if not reading_query_ex["smartMeterTelemetry"]:
             logging.error("Octopus API returned no data for {}".format(meter_id))
     return output_readings
+
 def update_gauge(key, value):
     if key not in gauges:
         gauges[key] = Gauge(key, 'Octopus Energy gauge')
     gauges[key].set(value)
+
+
+def update_gauge_ng(key: str, value: int, labels_dict: dict):
+    logging.debug("Setting gauge {} to value {} with labels {}".format(key, value, labels_dict))
+
+    if not gauges.get(key):
+        gauges[key] = Gauge(key, 'Octopus Energy gauge', labels_dict.keys() if labels_dict else {})
+
+
+    if labels_dict:
+        logging.info("Setting gauge {} with labels {}".format(key, labels_dict))
+        gauges[key].labels(**labels_dict).set(value)
+    else:
+        gauges[key].set(value)
 
 def get_jwt(api_key):
     logging.info("Dropping headers")
@@ -156,7 +174,7 @@ def get_jwt(api_key):
     if not bool(headers):
         logging.info("Dropped headers, refreshing JWT")
     else:
-        logging.warn("Failed to drop headers, trying to refresh JWT anyway")
+        logging.warning("Failed to drop headers, trying to refresh JWT anyway")
     query = gql("""
         mutation ObtainKrakenToken($apiKey: String!) {
             obtainKrakenToken(input: { APIKey: $apiKey}) {
@@ -171,9 +189,10 @@ def get_jwt(api_key):
     logging.info("JWT refresh success")
     return "jwt_query['obtainKrakenToken']['token']"
 
-def initial_load(api_key, gas, electric):
+def initial_load(api_key, gas, electric, ng_metrics):
     get_jwt(api_key)
     get_device_id(gas, electric)
+    sysconfig["ng_metrics"] = True if ng_metrics else False
 
 def check_jwt(api_key):
 
@@ -195,7 +214,7 @@ def read_meters(api_key):
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
                 for r_type, value in get_energy_reading(meter.device_id, meter.reading_types).items():
-                    update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type),float(value))
+                    update_gauge_ng("oe_meter_{}".format(r_type), float(value), meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type),float(value))
 
         time.sleep(interval)
 
@@ -214,7 +233,7 @@ def interval_rate_check():
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     interval_rate_check()
-    initial_load(str(os.environ.get("API_KEY")), os.getenv("GAS", 'False').lower() in ('true', '1', 't'),  os.getenv("ELECTRIC", 'False').lower() in ('true', '1', 't'))
+    initial_load(str(os.environ.get("API_KEY")), os.getenv("GAS", 'False').lower() in ('true', '1', 't'),  os.getenv("ELECTRIC", 'False').lower() in ('true', '1', 't'), os.getenv("NG_METRICS", 'False').lower() in ('true', '1', 't'))
     for meter in meters:
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
     start_prometheus_server()
