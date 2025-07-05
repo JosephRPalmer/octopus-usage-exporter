@@ -316,10 +316,10 @@ def electricity_tariff_parser(tariff):
         output_map["tariff_unit_rate"] = current_rate
         output_map["tariff_standing_charge"] = t.get("standingCharge")
     elif t.get("dayRate") and t.get("nightRate") and t.get("offPeakRate"):
-        logging.debug("Octopus 'three rate' tariff detected. Support for this tariff is not available yet.")
+        logging.warning("Octopus 'three rate' tariff detected. Support for this tariff is not available yet.")
         return output_map
     elif t.get("dayRate") and t.get("nightRate"):
-        logging.debug("Octopus 'day night' tariff detected. Support for this tariff is not available yet.")
+        logging.warning("Octopus 'day night' tariff detected. Support for this tariff is not available yet.")
         return output_map
     elif t.get("unitRate"):
         logging.debug("Octopus 'standard/prepay' tariff detected. Single unit rate will be returned.")
