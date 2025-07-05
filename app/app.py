@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.0.24"
+version = "0.1.0"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -108,32 +108,128 @@ def get_device_id(gas, electric):
         usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
                                if m['smartImportElectricityMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
-        meters.append(energy_meter("electric_meter", selected_smart_meter_device_id, "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"]))
+        meters.append(energy_meter("electric_meter", selected_smart_meter_device_id, "electric", int(os.environ.get("INTERVAL")), datetime.now()-timedelta(seconds=interval), ["consumption", "demand"], electric_query["account"]["electricityAgreements"][0]["id"] ))
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
     if gas:
         gas_query = oe_client.execute(gas_query, variable_values={"accountNumber": account_number})
         usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
                                if m['smartGasMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
-        meters.append(energy_meter("gas_meter", selected_smart_meter_device_id, "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"]))
+        meters.append(energy_meter("gas_meter", selected_smart_meter_device_id, "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"], gas_query["account"]["gasAgreements"][0]["id"]))
         logging.info("Gas Meter has been found - {}".format(selected_smart_meter_device_id))
 
 
-def get_energy_reading(meter_id, reading_types):
+def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
     output_readings = {}
-    query = gql("""
-        query SmartMeterTelemetry($deviceId: String!) {
-            smartMeterTelemetry(deviceId: $deviceId) {
-                readAt
-                consumption
-                demand
-                consumptionDelta
-                costDelta
-            }
+    # Dynamically build the query based on which agreement IDs are provided
+    query_blocks = []
+    query_blocks.append("""
+        smartMeterTelemetry(deviceId: $deviceId) {
+            readAt
+            consumption
+            demand
+            consumptionDelta
+            costDelta
         }
     """)
+    if energy_type == "electric":
+        query_blocks.append("""
+        electricityAgreement(id: $electricityAgreementId) {
+            isRevoked
+            validTo
+            ... on ElectricityAgreementType {
+                id
+                validTo
+                agreedFrom
+                tariff {
+                    ... on StandardTariff {
+                        id
+                        displayName
+                        standingCharge
+                        isExport
+                        unitRate
+                    }
+                    ... on DayNightTariff {
+                        id
+                        displayName
+                        fullName
+                        standingCharge
+                        isExport
+                        dayRate
+                        nightRate
+                    }
+                    ... on ThreeRateTariff {
+                        id
+                        displayName
+                        standingCharge
+                        isExport
+                        dayRate
+                        nightRate
+                        offPeakRate
+                    }
+                    ... on HalfHourlyTariff {
+                        id
+                        displayName
+                        standingCharge
+                        isExport
+                        unitRates {
+                            validFrom
+                            validTo
+                            value
+                        }
+                    }
+                    ... on PrepayTariff {
+                        id
+                        displayName
+                        description
+                        standingCharge
+                        isExport
+                        unitRate
+                    }
+                }
+            }
+        }
+        """)
+    elif energy_type == "gas":
+        query_blocks.append("""
+        gasAgreement(id: $gasAgreementId) {
+            validTo
+            isRevoked
+            id
+            validFrom
+            ... on GasAgreementType {
+                id
+                isRevoked
+                tariff {
+                    id
+                    displayName
+                    fullName
+                    standingCharge
+                    isExport
+                    unitRate
+                }
+            }
+        }
+        """)
+
+    query_str = f"""
+        query TariffsandMeterReadings($deviceId: String!{', $electricityAgreementId: String!' if energy_type == "electric" else ''}{', $gasAgreementId: String!' if energy_type == "gas" else ''}) {{
+            {"\n".join(query_blocks)}
+        }}
+    """
+
+
+    query = gql(query_str)
+    logging.info(query_str)
+    variables = {"deviceId": meter_id}
+    if energy_type == "electric":
+        variables["electricityAgreementId"] = agreement_id
+    elif energy_type == "gas":
+        variables["gasAgreementId"] = agreement_id
+
     try:
-        reading_query_ex = oe_client.execute(query, variable_values={"deviceId": meter_id})
+        reading_query_ex = oe_client.execute(query, variable_values=variables)
+        logging.info(reading_query_ex)
         reading_query_returned = reading_query_ex["smartMeterTelemetry"][0]
 
         for wanted_type in reading_types:
@@ -144,6 +240,7 @@ def get_energy_reading(meter_id, reading_types):
             logging.info("Meter: {} - Type: {} - Reading: {}".format(meter_id, wanted_type, reading_query_returned[wanted_type]))
     except TransportQueryError:
         logging.warning("Possible rate limit hit, increase call interval")
+        logging.warning(TransportQueryError)
     except IndexError:
         if not reading_query_ex["smartMeterTelemetry"]:
             logging.error("Octopus API returned no data for {}".format(meter_id))
@@ -209,7 +306,7 @@ def read_meters(api_key):
         for meter in meters:
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
-                for r_type, value in get_energy_reading(meter.device_id, meter.reading_types).items():
+                for r_type, value in get_energy_reading(meter.device_id, meter.reading_types, meter.agreement, meter.meter_type).items():
                     update_gauge_ng("oe_meter_{}".format(r_type), float(value), meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type),float(value))
 
         time.sleep(interval)

@@ -45,3 +45,86 @@ query SmartMeterTelemetry($deviceId: String!) {
     costDelta
   }
 }
+
+query TariffsandMeterReadings($deviceId: String!, electricityAgreementId: String!, gasAgreementId: String!) {
+    smartMeterTelemetry(deviceId: $deviceId) {
+    readAt
+    consumption
+    demand
+    consumptionDelta
+    costDelta
+    }
+    electricityAgreement(id: $electricityAgreementId) {
+        isRevoked
+        validTo
+        ... on ElectricityAgreementType {
+            id
+            validTo
+            agreedFrom
+            tariff {
+                ... on StandardTariff {
+                    id
+                    displayName
+                    standingCharge
+                    isExport
+                    unitRate
+                }
+                ... on DayNightTariff {
+                    id
+                    displayName
+                    fullName
+                    standingCharge
+                    isExport
+                    dayRate
+                    nightRate
+                }
+                ... on ThreeRateTariff {
+                    id
+                    displayName
+                    standingCharge
+                    isExport
+                    dayRate
+                    nightRate
+                    offPeakRate
+                }
+                ... on HalfHourlyTariff {
+                    id
+                    displayName
+                    standingCharge
+                    isExport
+                    unitRates {
+                        validFrom
+                        validTo
+                        value
+                    }
+                }
+                ... on PrepayTariff {
+                    id
+                    displayName
+                    description
+                    standingCharge
+                    isExport
+                    unitRate
+                }
+            }
+        }
+    }
+    gasAgreement(id: $gasAgreementId) {
+        validTo
+        isRevoked
+        id
+        validFrom
+        ... on GasAgreementType {
+            id
+            isRevoked
+            tariff {
+                id
+                displayName
+                fullName
+                standingCharge
+                isExport
+                unitRate
+            }
+        }
+    }
+}
