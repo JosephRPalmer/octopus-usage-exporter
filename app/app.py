@@ -124,103 +124,102 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
     # Dynamically build the query based on which agreement IDs are provided
     query_blocks = []
     query_blocks.append("""
-        smartMeterTelemetry(deviceId: $deviceId) {
-            readAt
-            consumption
-            demand
-            consumptionDelta
-            costDelta
-        }
+            smartMeterTelemetry(deviceId: $deviceId) {
+                readAt
+                consumption
+                demand
+                consumptionDelta
+                costDelta
+            }
     """)
     if energy_type == "electric":
         query_blocks.append("""
-        electricityAgreement(id: $electricityAgreementId) {
-            isRevoked
-            validTo
-            ... on ElectricityAgreementType {
-                id
+            electricityAgreement(id: $electricityAgreementId) {
+                isRevoked
                 validTo
-                agreedFrom
-                tariff {
-                    ... on StandardTariff {
-                        id
-                        displayName
-                        standingCharge
-                        isExport
-                        unitRate
+                ... on ElectricityAgreementType {
+                    id
+                    validTo
+                    agreedFrom
+                    tariff {
+                        ... on StandardTariff {
+                            id
+                            displayName
+                            standingCharge
+                            isExport
+                            unitRate
+                        }
+                        ... on DayNightTariff {
+                            id
+                            displayName
+                            fullName
+                            standingCharge
+                            isExport
+                            dayRate
+                            nightRate
+                        }
+                        ... on ThreeRateTariff {
+                            id
+                            displayName
+                            standingCharge
+                            isExport
+                            dayRate
+                            nightRate
+                            offPeakRate
+                        }
+                        ... on HalfHourlyTariff {
+                            id
+                            displayName
+                            standingCharge
+                            isExport
+                            unitRates {
+                                validFrom
+                                validTo
+                                value
+                            }
+                        }
+                        ... on PrepayTariff {
+                            id
+                            displayName
+                            description
+                            standingCharge
+                            isExport
+                            unitRate
+                        }
                     }
-                    ... on DayNightTariff {
+                }
+            }
+        """)
+    elif energy_type == "gas":
+        query_blocks.append("""
+            gasAgreement(id: $gasAgreementId) {
+                validTo
+                isRevoked
+                id
+                validFrom
+                ... on GasAgreementType {
+                    id
+                    isRevoked
+                    tariff {
                         id
                         displayName
                         fullName
                         standingCharge
                         isExport
-                        dayRate
-                        nightRate
-                    }
-                    ... on ThreeRateTariff {
-                        id
-                        displayName
-                        standingCharge
-                        isExport
-                        dayRate
-                        nightRate
-                        offPeakRate
-                    }
-                    ... on HalfHourlyTariff {
-                        id
-                        displayName
-                        standingCharge
-                        isExport
-                        unitRates {
-                            validFrom
-                            validTo
-                            value
-                        }
-                    }
-                    ... on PrepayTariff {
-                        id
-                        displayName
-                        description
-                        standingCharge
-                        isExport
                         unitRate
                     }
                 }
             }
-        }
-        """)
-    elif energy_type == "gas":
-        query_blocks.append("""
-        gasAgreement(id: $gasAgreementId) {
-            validTo
-            isRevoked
-            id
-            validFrom
-            ... on GasAgreementType {
-                id
-                isRevoked
-                tariff {
-                    id
-                    displayName
-                    fullName
-                    standingCharge
-                    isExport
-                    unitRate
-                }
-            }
-        }
         """)
 
     query_str = f"""
-        query TariffsandMeterReadings($deviceId: String!{', $electricityAgreementId: String!' if energy_type == "electric" else ''}{', $gasAgreementId: String!' if energy_type == "gas" else ''}) {{
+    query TariffsandMeterReadings($deviceId: String!{', $electricityAgreementId: ID!' if energy_type == "electric" else ''}{', $gasAgreementId: ID!' if energy_type == "gas" else ''}) {{
             {"\n".join(query_blocks)}
         }}
     """
 
 
     query = gql(query_str)
-    logging.info(query_str)
     variables = {"deviceId": meter_id}
     if energy_type == "electric":
         variables["electricityAgreementId"] = agreement_id
@@ -238,9 +237,9 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
             else:
                 output_readings[wanted_type] = reading_query_returned[wanted_type]
             logging.info("Meter: {} - Type: {} - Reading: {}".format(meter_id, wanted_type, reading_query_returned[wanted_type]))
-    except TransportQueryError:
+    except TransportQueryError as e:
         logging.warning("Possible rate limit hit, increase call interval")
-        logging.warning(TransportQueryError)
+        logging.warning(e)
     except IndexError:
         if not reading_query_ex["smartMeterTelemetry"]:
             logging.error("Octopus API returned no data for {}".format(meter_id))
