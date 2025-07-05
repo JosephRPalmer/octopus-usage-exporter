@@ -2,6 +2,14 @@
 
 Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini.
 
+Returns:
+- Consumption (Gas and Electric)
+- Demand (if you have a Smart Meter) (Electric Only)
+- Tariff Information (Standard and 'Smart' Half Hourly Tariffs only, 3 rate and day/night rate not currently supported)
+  - Standing Charge
+  - Current Unit Rate
+
+
 ## Working Items
 - Prometheus Exporter
 ## How To Use
