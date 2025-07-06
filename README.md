@@ -8,7 +8,7 @@ Returns:
 - Tariff Information (Standard and 'Smart' Half Hourly Tariffs only, 3 rate and day/night rate not currently supported)
   - Standing Charge
   - Current Unit Rate
-  - Days to tariff ends
+  - Days till tariff ends
 
 
 ## Working Items
