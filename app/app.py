@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.1.0"
+version = "0.1.1"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -279,6 +279,7 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
                     return {}
             output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
             output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
+            output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days if reading_query_ex["gasAgreement"]["validTo"] else None
         for wanted_type in reading_types:
             if reading_query_returned[wanted_type] == None:
                 output_readings[wanted_type] = 0
@@ -326,8 +327,9 @@ def electricity_tariff_parser(tariff):
         output_map["tariff_unit_rate"] = t["unitRate"]
         output_map["tariff_standing_charge"] = t["standingCharge"]
 
-    return output_map
+    output_map["tariff_days_remaining"] = (datetime.fromisoformat(tariff["validTo"]) - datetime.now(datetime.fromisoformat(tariff["validTo"]).tzinfo)).days if tariff["validTo"] else None
 
+    return output_map
 
 
 def update_gauge(key, value):
