@@ -257,7 +257,7 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
     try:
         reading_query_ex = oe_client.execute(query, variable_values=variables)
         reading_query_returned = reading_query_ex["smartMeterTelemetry"][0]
-        if energy_type == "electric" and sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]:
+        if energy_type == "electric" and (sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]):
             if reading_query_ex["electricityAgreement"]["isRevoked"]:
                 logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(agreement_id))
                 return {}
@@ -268,7 +268,7 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
                     return {}
             for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
                 output_readings[key] = value
-        elif energy_type == "gas" and sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]:
+        elif energy_type == "gas" and (sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]):
             if reading_query_ex["gasAgreement"]["isRevoked"]:
                 logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(agreement_id))
                 return {}
@@ -277,9 +277,11 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
                 if valid_to < datetime.now(valid_to.tzinfo):
                     logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(agreement_id))
                     return {}
-            output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
-            output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
-            output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days if reading_query_ex["gasAgreement"]["validTo"] else None
+            if sysconfig["tariff_rates"]:
+                output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"] if sysconfig["tariff_rates"] else None
+                output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
+            if sysconfig["tariff_remaining"]:
+                output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days if reading_query_ex["gasAgreement"]["validTo"] else None
         for wanted_type in reading_types:
             if reading_query_returned[wanted_type] == None:
                 output_readings[wanted_type] = 0
@@ -304,30 +306,37 @@ def electricity_tariff_parser(tariff):
 
     now = datetime.now().astimezone()
     t = tariff["tariff"]
-    if t.get("unitRates"):
-        logging.debug("Octopus 'smart' tariff detected. Half hourly rates will be returned.")
-        # Find the unit rate valid for now
-        current_rate = None
-        for rate in t["unitRates"]:
-            valid_from = datetime.fromisoformat(rate["validFrom"])
-            valid_to = datetime.fromisoformat(rate["validTo"])
-            if valid_from <= now and now < valid_to:
-                current_rate = rate["value"]
-                break
-        output_map["tariff_unit_rate"] = current_rate
-        output_map["tariff_standing_charge"] = t.get("standingCharge")
-    elif t.get("dayRate") and t.get("nightRate") and t.get("offPeakRate"):
-        logging.warning("Octopus 'three rate' tariff detected. Support for this tariff is not available yet.")
-        return output_map
-    elif t.get("dayRate") and t.get("nightRate"):
-        logging.warning("Octopus 'day night' tariff detected. Support for this tariff is not available yet.")
-        return output_map
-    elif t.get("unitRate"):
-        logging.debug("Octopus 'standard/prepay' tariff detected. Single unit rate will be returned.")
-        output_map["tariff_unit_rate"] = t["unitRate"]
-        output_map["tariff_standing_charge"] = t["standingCharge"]
+    if sysconfig["tariff_rates"]:
+        if t.get("unitRates"):
+            logging.debug("Octopus 'smart' tariff detected. Half hourly rates will be returned.")
+            # Find the unit rate valid for now
+            current_rate = None
+            for rate in t["unitRates"]:
+                valid_from = datetime.fromisoformat(rate["validFrom"])
+                valid_to = datetime.fromisoformat(rate["validTo"])
+                if valid_from <= now and now < valid_to:
+                    current_rate = rate["value"]
+                    break
+            output_map["tariff_unit_rate"] = current_rate
+        elif t.get("dayRate") and t.get("nightRate") and t.get("offPeakRate"):
+            logging.warning("Octopus 'three rate' tariff detected. Support for this tariff is not available yet.")
+            return output_map
+        elif t.get("dayRate") and t.get("nightRate"):
+            logging.warning("Octopus 'day night' tariff detected. Support for this tariff is not available yet.")
+            return output_map
+        elif t.get("unitRate"):
+            logging.debug("Octopus 'standard/prepay' tariff detected. Single unit rate will be returned.")
+            output_map["tariff_unit_rate"] = t["unitRate"]
 
-    output_map["tariff_days_remaining"] = (datetime.fromisoformat(tariff["validTo"]) - datetime.now(datetime.fromisoformat(tariff["validTo"]).tzinfo)).days if tariff["validTo"] else None
+        output_map["tariff_standing_charge"] = t["standingCharge"]
+    if sysconfig["tariff_remaining"]:
+        valid_to = tariff.get("validTo")
+        if valid_to:
+            valid_to_dt = datetime.fromisoformat(valid_to)
+            now = datetime.now(valid_to_dt.tzinfo)
+            output_map["tariff_days_remaining"] = (valid_to_dt - now).days
+        else:
+            output_map["tariff_days_remaining"] = None
 
     return output_map
 
@@ -396,10 +405,11 @@ def read_meters(api_key):
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
                 for r_type, value in get_energy_reading(meter.device_id, meter.reading_types, meter.agreement, meter.meter_type).items():
-                    if isinstance(value, float):
-                        update_gauge_ng("oe_meter_{}".format(r_type), float(value), meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type), float(value))
-                    else:
-                        logging.warning("Value for {} is not a float: {}".format(r_type, value))
+                    try:
+                        value = float(value)
+                        update_gauge_ng("oe_meter_{}".format(r_type), value, meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type), value)
+                    except (TypeError, ValueError):
+                        logging.warning("Value for {} is not a float: {} - labels: {}".format(r_type, value, meter.return_labels()))
 
         time.sleep(interval)
 
@@ -423,8 +433,8 @@ if __name__ == '__main__':
         os.getenv("GAS", "False").lower() in ("true", "1", "t"),
         os.getenv("ELECTRIC", "False").lower() in ("true", "1", "t"),
         os.getenv("NG_METRICS", "False").lower() in ("true", "1", "t"),
-        os.getenv("TARIFF_RATES", "True").lower() in ("false", "0", "f"),
-        os.getenv("TARIFF_REMAINING", "True").lower() in ("false", "0", "f"),
+        os.getenv("TARIFF_RATES", "False").lower() in ("true", "1", "t"),
+        os.getenv("TARIFF_REMAINING", "False").lower() in ("true", "1", "t"),
     )
     for meter in meters:
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
