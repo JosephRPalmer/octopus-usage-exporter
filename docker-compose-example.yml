@@ -14,5 +14,7 @@ services:
       - ELECTRIC=True
       - ACCOUNT_NUMBER=A-ABC12E04
       - NG_METRICS=False
+      - TARIFF_RATES=True
+      - TARIFF_REMAINING=True
     ports:
       - "9120:9120"

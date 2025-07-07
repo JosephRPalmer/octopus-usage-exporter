@@ -24,6 +24,8 @@ Returns:
   - `GAS=True` (Gas stat scraping)
   - `ELECTRIC=True` (Electric stat scraping)
   - `NG_METRICS=False` (New for 0.0.24, metrics move to use a proper label format outside of metric names. Defaults to false with existing metric format, setting to True will enable new formatting. This behaviour will change in future major release.)
+  - `TARIFF_RATES=True` (Tariff pricing scraping)
+  - `TARIFF_REMAINING=True` (Tariff agreement time remaining scrape and calculation)
 - Ensure the ports exposed in the docker compose match the port referenced under PROM_PORT
 
 ## Docker Compose Example
