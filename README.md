@@ -47,6 +47,8 @@ services:
       - GAS=True
       - ELECTRIC=True
       - NG_METRICS=False
+      - TARIFF_RATES=True
+      - TARIFF_REMAINING=True
     ports:
       - "9120:9120"
 
