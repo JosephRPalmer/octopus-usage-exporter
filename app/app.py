@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.1.1"
+version = "0.1.2"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -257,7 +257,7 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
     try:
         reading_query_ex = oe_client.execute(query, variable_values=variables)
         reading_query_returned = reading_query_ex["smartMeterTelemetry"][0]
-        if energy_type == "electric":
+        if energy_type == "electric" and sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]:
             if reading_query_ex["electricityAgreement"]["isRevoked"]:
                 logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(agreement_id))
                 return {}
@@ -268,7 +268,7 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
                     return {}
             for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
                 output_readings[key] = value
-        elif energy_type == "gas":
+        elif energy_type == "gas" and sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]:
             if reading_query_ex["gasAgreement"]["isRevoked"]:
                 logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(agreement_id))
                 return {}
@@ -368,10 +368,13 @@ def get_jwt(api_key):
     logging.info("JWT refresh success")
     return "jwt_query['obtainKrakenToken']['token']"
 
-def initial_load(api_key, gas, electric, ng_metrics):
+def initial_load(api_key, gas, electric, ng_metrics, rates, remaining):
     get_jwt(api_key)
     get_device_id(gas, electric)
     sysconfig["ng_metrics"] = ng_metrics
+    sysconfig["tariff_rates"] = rates
+    sysconfig["tariff_remaining"] = remaining
+
 
 def check_jwt(api_key):
 
@@ -393,7 +396,10 @@ def read_meters(api_key):
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
                 for r_type, value in get_energy_reading(meter.device_id, meter.reading_types, meter.agreement, meter.meter_type).items():
-                    update_gauge_ng("oe_meter_{}".format(r_type), float(value), meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type),float(value))
+                    if isinstance(value, float):
+                        update_gauge_ng("oe_meter_{}".format(r_type), float(value), meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type), float(value))
+                    else:
+                        logging.warning("Value for {} is not a float: {}".format(r_type, value))
 
         time.sleep(interval)
 
@@ -412,7 +418,14 @@ def interval_rate_check():
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     interval_rate_check()
-    initial_load(str(os.environ.get("API_KEY")), os.getenv("GAS", 'False').lower() in ('true', '1', 't'),  os.getenv("ELECTRIC", 'False').lower() in ('true', '1', 't'), os.getenv("NG_METRICS", 'False').lower() in ('true', '1', 't'))
+    initial_load(
+        str(os.environ.get("API_KEY")),
+        os.getenv("GAS", "False").lower() in ("true", "1", "t"),
+        os.getenv("ELECTRIC", "False").lower() in ("true", "1", "t"),
+        os.getenv("NG_METRICS", "False").lower() in ("true", "1", "t"),
+        os.getenv("TARIFF_RATES", "True").lower() in ("false", "0", "f"),
+        os.getenv("TARIFF_REMAINING", "True").lower() in ("false", "0", "f"),
+    )
     for meter in meters:
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
     start_prometheus_server()
