@@ -1,5 +1,8 @@
 # Octopus Usage Exporter
 
+[![Docker Image CI](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml/badge.svg)](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml)
+
+
 Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini.
 
 Returns:
