@@ -1,6 +1,6 @@
 # Octopus Usage Exporter
 
-[![Docker Image CI](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml/badge.svg)](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml)![GitHub Tag](https://img.shields.io/github/v/tag/josephrpalmer/octopus-usage-exporter)
+[![Docker Image CI](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml/badge.svg)](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml)  ![GitHub Tag](https://img.shields.io/github/v/tag/josephrpalmer/octopus-usage-exporter)
 
 Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini.
 
