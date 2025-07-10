@@ -28,6 +28,33 @@ Returns:
   - `TARIFF_REMAINING=True` (Tariff agreement time remaining scrape and calculation)
 - Ensure the ports exposed in the docker compose match the port referenced under PROM_PORT
 
+## Example Metrics
+```
+# HELP oe_meter_tariff_unit_rate Unit rate of the tariff in pence per kWh
+# TYPE oe_meter_tariff_unit_rate gauge
+oe_meter_tariff_unit_rate{device_id="00-12-34-56-78-9A-BC-DE",meter_type="electric"} 22.995
+oe_meter_tariff_unit_rate{device_id="00-12-34-56-78-9A-BC-DE",meter_type="gas"} 6.134415
+# HELP oe_meter_tariff_standing_charge Standing charge of the tariff in pence per day
+# TYPE oe_meter_tariff_standing_charge gauge
+oe_meter_tariff_standing_charge{device_id="00-12-34-56-78-9A-BC-DE",meter_type="electric"} 49.98336
+oe_meter_tariff_standing_charge{device_id="00-12-34-56-78-9A-BC-DE",meter_type="gas"} 31.381455
+# HELP oe_meter_tariff_expiry Expiry date of the tariff in epoch seconds
+# TYPE oe_meter_tariff_expiry gauge
+oe_meter_tariff_expiry{device_id="00-12-34-56-78-9A-BC-DE",meter_type="electric"} 1.782342e+09
+oe_meter_tariff_expiry{device_id="00-12-34-56-78-9A-BC-DE",meter_type="gas"} 1.7750844e+09
+# HELP oe_meter_tariff_days_remaining Days remaining until the tariff expires
+# TYPE oe_meter_tariff_days_remaining gauge
+oe_meter_tariff_days_remaining{device_id="00-12-34-56-78-9A-BC-DE",meter_type="electric"} 349.0
+oe_meter_tariff_days_remaining{device_id="00-12-34-56-78-9A-BC-DE",meter_type="gas"} 265.0
+# HELP oe_meter_consumption Total consumption in kWh
+# TYPE oe_meter_consumption gauge
+oe_meter_consumption{device_id="00-12-34-56-78-9A-BC-DE",meter_type="electric"} 5.582643e+06
+oe_meter_consumption{device_id="00-12-34-56-78-9A-BC-DE",meter_type="gas"} 1.451495518e+07
+# HELP oe_meter_demand Total demand in watts
+# TYPE oe_meter_demand gauge
+oe_meter_demand{device_id="00-12-34-56-78-9A-BC-DE",meter_type="electric"} 439.6
+```
+
 ## Docker Compose Example
 
 ```yaml

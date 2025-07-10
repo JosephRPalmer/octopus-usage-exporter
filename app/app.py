@@ -18,8 +18,15 @@ logging.basicConfig(level=logging.INFO,
 requests_logger.setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-version = "0.1.2"
+version = "0.1.3"
 gauges = {}
+
+gauge_definitions = {"consumption": "Total consumption in kWh",
+                     "demand": "Total demand in watts",
+                     "tariff_unit_rate": "Unit rate of the tariff in pence per kWh",
+                     "tariff_standing_charge": "Standing charge of the tariff in pence per day",
+                     "tariff_expiry": "Expiry date of the tariff in epoch seconds",
+                     "tariff_days_remaining": "Days remaining until the tariff expires",}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
 account_number = os.environ.get('ACCOUNT_NUMBER')
@@ -281,7 +288,8 @@ def get_energy_reading(meter_id, reading_types, agreement_id, energy_type):
                 output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"] if sysconfig["tariff_rates"] else None
                 output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
             if sysconfig["tariff_remaining"]:
-                output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days if reading_query_ex["gasAgreement"]["validTo"] else None
+                output_readings["tariff_expiry"] = datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).timestamp() if (reading_query_ex["gasAgreement"]["validTo"] and reading_query_ex["gasAgreement"]["validTo"] != "null") else None
+                output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days if (reading_query_ex["gasAgreement"]["validTo"] and reading_query_ex["gasAgreement"]["validTo"] != "null") else None
         for wanted_type in reading_types:
             if reading_query_returned[wanted_type] == None:
                 output_readings[wanted_type] = 0
@@ -331,25 +339,34 @@ def electricity_tariff_parser(tariff):
         output_map["tariff_standing_charge"] = t["standingCharge"]
     if sysconfig["tariff_remaining"]:
         valid_to = tariff.get("validTo")
-        if valid_to:
+        if valid_to and valid_to != "null":
             valid_to_dt = datetime.fromisoformat(valid_to)
             now = datetime.now(valid_to_dt.tzinfo)
+            output_map["tariff_expiry"] = valid_to_dt.timestamp()
             output_map["tariff_days_remaining"] = (valid_to_dt - now).days
-        else:
-            output_map["tariff_days_remaining"] = None
 
     return output_map
+
+def get_gauge_definition(key):
+    """
+    Returns the description of the gauge based on its key.
+    If the key is not found, returns a default message.
+    """
+    for gauge_key, description in gauge_definitions.items():
+        if key.endswith(gauge_key):
+            return description
+    return "Octopus Energy Gauge"
 
 
 def update_gauge(key, value):
     if key not in gauges:
-        gauges[key] = Gauge(key, 'Octopus Energy gauge')
+        gauges[key] = Gauge(key, get_gauge_definition(key))
     gauges[key].set(value)
 
 
 def update_gauge_ng(key: str, value: int, labels_dict: dict):
     if not gauges.get(key):
-        gauges[key] = Gauge(key, 'Octopus Energy gauge', labels_dict.keys() if labels_dict else {})
+        gauges[key] = Gauge(key, get_gauge_definition(key), labels_dict.keys() if labels_dict else {})
 
     if labels_dict:
         gauges[key].labels(**labels_dict).set(value)
