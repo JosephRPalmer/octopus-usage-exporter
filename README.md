@@ -1,6 +1,6 @@
 # Octopus Usage Exporter
 
-[![Docker Image CI](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml/badge.svg)](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml) &nbsp;&nbsp; ![GitHub Tag](https://img.shields.io/github/v/tag/josephrpalmer/octopus-usage-exporter) &nbsp; &nbsp; ![GitHub License](https://img.shields.io/github/license/josephrpalmer/octopus-usage-exporter) &nbsp;&nbsp;![GitHub Release Date](https://img.shields.io/github/release-date/josephrpalmer/octopus-usage-exporter)
+[![Docker Image CI](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml/badge.svg)](https://github.com/JosephRPalmer/octopus-usage-exporter/actions/workflows/main.yml) &nbsp;&nbsp; ![GitHub Tag](https://img.shields.io/github/v/tag/josephrpalmer/octopus-usage-exporter)  &nbsp;&nbsp;![GitHub Release Date](https://img.shields.io/github/release-date/josephrpalmer/octopus-usage-exporter) &nbsp; &nbsp; ![GitHub License](https://img.shields.io/github/license/josephrpalmer/octopus-usage-exporter)
 
 
 
