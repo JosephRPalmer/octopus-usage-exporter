@@ -355,7 +355,7 @@ def get_gauge_definition(key):
     for gauge_key, description in gauge_definitions.items():
         if key.endswith(gauge_key):
             return description
-    return "Octopus Energy Gauge"
+    return "Octopus Energy gauge"
 
 
 def update_gauge(key, value):
