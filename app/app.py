@@ -1,6 +1,7 @@
 from prometheus_client import MetricsHandler, Gauge
 import httpx
 from datetime import datetime, timedelta
+from enum import Enum
 from jose import jwt
 import logging
 import os
@@ -22,13 +23,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 version = "0.1.3"
 gauges = {}
 
-gauge_definitions = {"consumption": "Total consumption in kWh",
-                     "demand": "Total demand in watts",
-                     "tariff_unit_rate": "Unit rate of the tariff in pence per kWh",
-                     "tariff_standing_charge": "Standing charge of the tariff in pence per day",
-                     "tariff_expiry": "Expiry date of the tariff in epoch seconds",
-                     "tariff_days_remaining": "Days remaining until the tariff expires",}
-
 prom_port = int(os.environ.get('PROM_PORT', 9120))
 account_number = os.environ.get('ACCOUNT_NUMBER')
 
@@ -46,6 +40,14 @@ sysconfig = {}
 interval = 1800
 
 oe_client = Client(transport=transport, fetch_schema_from_transport=False)
+
+class GaugeDefinitions(str, Enum):
+    consumption= "Total consumption in kWh"
+    demand= "Total demand in watts"
+    tariff_unit_rate= "Unit rate of the tariff in pence per kWh"
+    tariff_standing_charge= "Standing charge of the tariff in pence per day"
+    tariff_expiry= "Expiry date of the tariff in epoch seconds"
+    tariff_days_remaining= "Days remaining until the tariff expires"
 
 class PrometheusEndpointServer(threading.Thread):
     def __init__(self, httpd, *args, **kwargs):
@@ -369,31 +371,21 @@ def electricity_tariff_parser(tariff):
 
     return output_map
 
-def get_gauge_definition(key):
-    """
-    Returns the description of the gauge based on its key.
-    If the key is not found, returns a default message.
-    """
-    for gauge_key, description in gauge_definitions.items():
-        if key.endswith(gauge_key):
-            return description
-    return "Octopus Energy gauge"
-
-
 def update_gauge(key, value):
     if key not in gauges:
-        gauges[key] = Gauge(key, get_gauge_definition(key))
+        gauges[key] = Gauge(key, "Octopus Energy Gauge")
     gauges[key].set(value)
 
 
 def update_gauge_ng(key: str, value: int, labels_dict: dict):
-    if not gauges.get(key):
-        gauges[key] = Gauge(key, get_gauge_definition(key), labels_dict.keys() if labels_dict else {})
+    amended_key = "oe_meter_{}".format(key)
+    if not gauges.get(amended_key):
+        gauges[amended_key] = Gauge(amended_key, GaugeDefinitions[key].value, labels_dict.keys() if labels_dict else {})
 
     if labels_dict:
-        gauges[key].labels(**labels_dict).set(value)
+        gauges[amended_key].labels(**labels_dict).set(value)
     else:
-        gauges[key].set(value)
+        gauges[amended_key].set(value)
 
 def get_jwt(api_key):
     logging.info("Dropping headers")
@@ -446,7 +438,7 @@ def read_meters(api_key):
                 for r_type, value in get_energy_reading(meter.device_id, meter.reading_types, meter.agreement, meter.meter_type).items():
                     try:
                         value = float(value)
-                        update_gauge_ng("oe_meter_{}".format(r_type), value, meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type), value)
+                        update_gauge_ng(r_type, value, meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type), value)
                     except (TypeError, ValueError):
                         logging.warning("Value for {} is not a float: {} - labels: {}".format(r_type, value, meter.return_labels()))
 
