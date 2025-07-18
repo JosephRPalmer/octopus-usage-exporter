@@ -153,7 +153,13 @@ def get_device_id(gas, electric):
         usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
                                if m['smartImportElectricityMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
-        meters.append(energy_meter("electric_meter", selected_smart_meter_device_id, "electric", Settings().interval, datetime.now()-timedelta(seconds=interval), ["consumption", "demand"], electric_query["account"]["electricityAgreements"][0]["id"] ))
+        meters.append(energy_meter(name="electric_meter",
+                                   device_id=selected_smart_meter_device_id,
+                                   meter_type="electric",
+                                   polling_interval=Settings().interval,
+                                   last_called=datetime.now()-timedelta(seconds=interval),
+                                   reading_types=["consumption", "demand"],
+                                   agreement=electric_query["account"]["electricityAgreements"][0]["id"]))
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Electricity Tariff information: {}".format(electric_query["account"]["electricityAgreements"][0]["tariff"]["displayName"]))
     if gas:
@@ -161,7 +167,12 @@ def get_device_id(gas, electric):
         usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
                                if m['smartGasMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
-        meters.append(energy_meter("gas_meter", selected_smart_meter_device_id, "gas", 1800, datetime.now()-timedelta(seconds=1800), ["consumption"], gas_query["account"]["gasAgreements"][0]["id"]))
+        meters.append(energy_meter(name="gas_meter",
+                                   device_id=selected_smart_meter_device_id, meter_type="gas",
+                                   polling_interval=1800,
+                                   last_called=datetime.now()-timedelta(seconds=1800),
+                                   reading_types=["consumption"],
+                                   agreement=gas_query["account"]["gasAgreements"][0]["id"]))
         logging.info("Gas Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Gas Tariff information: {}".format(gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]))
 
