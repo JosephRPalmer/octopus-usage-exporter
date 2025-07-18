@@ -1,0 +1,14 @@
+[project]
+name = "octopus-usage-exporter"
+version = "0.1.3"
+description = "Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "gql==3.4.1",
+    "httpx==0.25.1",
+    "prometheus-client==0.22.1",
+    "python-jose==3.3.0",
+    "requests==2.32.4",
+    "requests-toolbelt==1.0.0",
+]

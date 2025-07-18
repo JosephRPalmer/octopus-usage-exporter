@@ -338,9 +338,8 @@ def electricity_tariff_parser(tariff):
 
         output_map["tariff_standing_charge"] = t["standingCharge"]
     if sysconfig["tariff_remaining"]:
-        valid_to = tariff.get("validTo")
-        if valid_to and valid_to != "null":
-            valid_to_dt = datetime.fromisoformat(valid_to)
+        if tariff.get("validTo") and tariff.get("validTo") != "null":
+            valid_to_dt = datetime.fromisoformat(tariff.get("validTo"))
             now = datetime.now(valid_to_dt.tzinfo)
             output_map["tariff_expiry"] = valid_to_dt.timestamp()
             output_map["tariff_days_remaining"] = (valid_to_dt - now).days
