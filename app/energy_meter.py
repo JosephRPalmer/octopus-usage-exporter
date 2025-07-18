@@ -1,12 +1,14 @@
-class energy_meter:
-    def __init__(self, name, device_id, meter_type, polling_interval, last_called, reading_types, agreement):
-        self.name = name
-        self.device_id = device_id
-        self.meter_type = meter_type
-        self.polling_interval = polling_interval
-        self.last_called = last_called
-        self.reading_types = reading_types
-        self.agreement = agreement
+from pydantic import BaseModel
+from datetime import datetime
+class energy_meter(BaseModel):
+    name: str
+    device_id: str | None = None
+    meter_type: str | None = None
+    polling_interval: int | None = None
+    last_called: datetime | None = None
+    reading_types: list[str] | None = None
+    agreement: int | None = None
+
 
     def return_labels(self):
         labels = {}
