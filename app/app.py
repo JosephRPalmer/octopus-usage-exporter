@@ -13,7 +13,7 @@ from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from energy_meter import energy_meter
+
 from gas_meter import gas_meter
 from electric_meter import electric_meter
 
@@ -157,13 +157,17 @@ def get_device_id(gas, electric):
         usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
                                if m['smartImportElectricityMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
-        meters.append(electric_meter(name="electric_meter",
-                                   device_id=selected_smart_meter_device_id,
-                                   meter_type="electric",
-                                   polling_interval=Settings().interval,
-                                   last_called=datetime.now()-timedelta(seconds=interval),
-                                   reading_types=["consumption", "demand"],
-                                   agreement=electric_query["account"]["electricityAgreements"][0]["id"]))
+        meters.append(electric_meter(
+            name="electric_meter",
+            device_id=selected_smart_meter_device_id,
+            meter_type="electric",
+            polling_interval=Settings().interval,
+            last_called=datetime.now() - timedelta(seconds=interval),
+            reading_types=["consumption", "demand"] +
+            (["tariff_expiry", "tariff_days_remaining"] if sysconfig["tariff_remaining"] else []) +
+            (["tariff_unit_rate", "tariff_standing_charge"] if sysconfig["tariff_rates"] else []),
+            agreement=electric_query["account"]["electricityAgreements"][0]["id"]
+        ))
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Electricity Tariff information: {}".format(electric_query["account"]["electricityAgreements"][0]["tariff"]["displayName"]))
     if gas:
@@ -175,7 +179,9 @@ def get_device_id(gas, electric):
                                    device_id=selected_smart_meter_device_id, meter_type="gas",
                                    polling_interval=1800,
                                    last_called=datetime.now()-timedelta(seconds=1800),
-                                   reading_types=["consumption"],
+                                   reading_types=["consumption"] +
+                                    (["tariff_expiry", "tariff_days_remaining"] if sysconfig.get("tariff_remaining") else []) +
+                                    (["tariff_unit_rate", "tariff_standing_charge"] if sysconfig.get("tariff_rates") else []),
                                    agreement=gas_query["account"]["gasAgreements"][0]["id"]))
         logging.info("Gas Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Gas Tariff information: {}".format(gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]))
@@ -201,7 +207,7 @@ def get_energy_reading(meter):
                     return {}
             for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
                 output_readings[key] = value
-        elif meter.meter_type == "gas" and (sysconfig["tariff_rates"] or sysconfig["tariff_remaining"]):
+        elif meter.meter_type == "gas":
             if reading_query_ex["gasAgreement"]["isRevoked"]:
                 logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
                 return {}
@@ -210,22 +216,25 @@ def get_energy_reading(meter):
                 if valid_to < datetime.now(valid_to.tzinfo):
                     logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
                     return {}
-                output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"] if sysconfig["tariff_rates"] else None
+                output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
                 output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
-                output_readings["tariff_expiry"] = datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).timestamp() if (reading_query_ex["gasAgreement"]["validTo"] and reading_query_ex["gasAgreement"]["validTo"] != "null") else None
-                output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days if (reading_query_ex["gasAgreement"]["validTo"] and reading_query_ex["gasAgreement"]["validTo"] != "null") else None
+                output_readings["tariff_expiry"] = datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).timestamp()
+                output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
         for wanted_type in meter.reading_types:
-            if returned_telemetry[wanted_type] == None:
-                output_readings[wanted_type] = 0
+            if output_readings.get(wanted_type) is not None:
+                pass
+            elif returned_telemetry.get(wanted_type) is not None:
+                output_readings[wanted_type] = returned_telemetry.get(wanted_type)
             else:
-                output_readings[wanted_type] = returned_telemetry[wanted_type]
-            logging.info("Meter: {} - Type: {} - Reading: {}".format(meter.device_id, wanted_type, returned_telemetry[wanted_type]))
+                output_readings[wanted_type] = 0
+            logging.debug("Meter: {} - Type: {} - Fuel: {} - Reading: {}".format(meter.device_id, wanted_type, meter.meter_type, output_readings.get(wanted_type)))
     except TransportQueryError as e:
         logging.warning("Possible rate limit hit, increase call interval")
         logging.warning(e)
     except IndexError:
         if not reading_query_ex["smartMeterTelemetry"]:
-            logging.error("Octopus API returned no data for {}".format(meter_id))
+            logging.error("Octopus API returned no consumption or demand data for {}".format(meter.device_id))
+    logging.info("Meter: {} - {} metrics collected".format(meter.device_id, len(output_readings)))
     return output_readings
 
 def electricity_tariff_parser(tariff):
@@ -268,21 +277,30 @@ def electricity_tariff_parser(tariff):
 
     return output_map
 
-def update_gauge(key, value):
-    if key not in gauges:
-        gauges[key] = Gauge(key, "Octopus Energy Gauge")
-    gauges[key].set(value)
+def update_gauge(key, value, meter):
+    amended_key = "oe_{}_{}_{}".format(key, strip_device_id(meter.device_id), meter.meter_type)
+
+    try:
+        value = float(value)
+        if key in meter.reading_types:
+            if amended_key not in gauges:
+                gauges[amended_key] = Gauge(amended_key, "Octopus Energy Gauge")
+            gauges[amended_key].set(value)
+    except (TypeError, ValueError):
+            logging.warning("Value for {} is not a float: {} - labels: {}".format(key, value, meter.return_labels()))
 
 
-def update_gauge_ng(key: str, value: int, labels_dict: dict):
+def update_gauge_ng(key: str, value, meter):
     amended_key = "oe_meter_{}".format(key)
-    if not gauges.get(amended_key):
-        gauges[amended_key] = Gauge(amended_key, GaugeDefinitions[key].value, labels_dict.keys() if labels_dict else {})
+    try:
+        value = float(value)
+        if key in meter.reading_types:
+            if not gauges.get(amended_key):
+                gauges[amended_key] = Gauge(amended_key, GaugeDefinitions[key].value, meter.return_labels())
+            gauges[amended_key].labels(**meter.return_labels()).set(value)
+    except (TypeError, ValueError):
+        logging.warning("Value for {} is not a float: {} - labels: {}".format(key, value, meter.return_labels()))
 
-    if labels_dict:
-        gauges[amended_key].labels(**labels_dict).set(value)
-    else:
-        gauges[amended_key].set(value)
 
 def get_jwt(api_key):
     logging.info("Dropping headers")
@@ -306,12 +324,11 @@ def get_jwt(api_key):
     return "jwt_query['obtainKrakenToken']['token']"
 
 def initial_load(api_key, gas, electric, ng_metrics, rates, remaining):
-    get_jwt(api_key)
-    get_device_id(gas, electric)
     sysconfig["ng_metrics"] = ng_metrics
     sysconfig["tariff_rates"] = rates
     sysconfig["tariff_remaining"] = remaining
-
+    get_jwt(api_key)
+    get_device_id(gas, electric)
 
 def check_jwt(api_key):
 
@@ -333,11 +350,7 @@ def read_meters(api_key):
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
                 for r_type, value in get_energy_reading(meter).items():
-                    try:
-                        value = float(value)
-                        update_gauge_ng(r_type, value, meter.return_labels()) if sysconfig["ng_metrics"] else update_gauge("oe_{}_{}_{}".format(r_type, strip_device_id(meter.device_id), meter.meter_type), value)
-                    except (TypeError, ValueError):
-                        logging.warning("Value for {} is not a float: {} - labels: {}".format(r_type, value, meter.return_labels()))
+                    update_gauge_ng(r_type, value, meter) if sysconfig["ng_metrics"] else update_gauge(r_type, value, meter)
 
         time.sleep(interval)
 
