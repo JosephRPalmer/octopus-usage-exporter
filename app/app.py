@@ -364,8 +364,7 @@ def interval_rate_check():
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     interval_rate_check()
-    initial_load(Settings().api_key, Settings().gas, Settings().electric, Settings().ng_metrics,
-                 Settings().tariff_rates, Settings().tariff_remaining)
+    initial_load(Settings().api_key, Settings().gas, Settings().electric)
     for meter in meters:
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
     start_prometheus_server()
