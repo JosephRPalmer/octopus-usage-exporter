@@ -10,7 +10,7 @@ dependencies = [
     "prometheus-client==0.22.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
-    "python-jose==3.3.0",
+    "python-jose==3.4.0",
     "requests==2.32.4",
     "requests-toolbelt==1.0.0",
 ]
