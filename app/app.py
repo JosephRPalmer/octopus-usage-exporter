@@ -37,8 +37,6 @@ transport = RequestsHTTPTransport(url="https://api.octopus.energy/v1/graphql/#",
 
 meters = []
 
-sysconfig = {}
-
 interval = 1800
 
 oe_client = Client(transport=transport, fetch_schema_from_transport=False)
@@ -164,8 +162,8 @@ def get_device_id(gas, electric):
             polling_interval=Settings().interval,
             last_called=datetime.now() - timedelta(seconds=interval),
             reading_types=["consumption", "demand"] +
-            (["tariff_expiry", "tariff_days_remaining"] if sysconfig["tariff_remaining"] else []) +
-            (["tariff_unit_rate", "tariff_standing_charge"] if sysconfig["tariff_rates"] else []),
+            (["tariff_expiry", "tariff_days_remaining"] if Settings().tariff_remaining else []) +
+            (["tariff_unit_rate", "tariff_standing_charge"] if Settings().tariff_rates else []),
             agreement=electric_query["account"]["electricityAgreements"][0]["id"]
         ))
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
@@ -180,8 +178,8 @@ def get_device_id(gas, electric):
                                    polling_interval=1800,
                                    last_called=datetime.now()-timedelta(seconds=1800),
                                    reading_types=["consumption"] +
-                                    (["tariff_expiry", "tariff_days_remaining"] if sysconfig.get("tariff_remaining") else []) +
-                                    (["tariff_unit_rate", "tariff_standing_charge"] if sysconfig.get("tariff_rates") else []),
+                                    (["tariff_expiry", "tariff_days_remaining"] if Settings().tariff_remaining else []) +
+                                    (["tariff_unit_rate", "tariff_standing_charge"] if Settings().tariff_rates else []),
                                    agreement=gas_query["account"]["gasAgreements"][0]["id"]))
         logging.info("Gas Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Gas Tariff information: {}".format(gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]))
@@ -323,10 +321,7 @@ def get_jwt(api_key):
     logging.info("JWT refresh success")
     return "jwt_query['obtainKrakenToken']['token']"
 
-def initial_load(api_key, gas, electric, ng_metrics, rates, remaining):
-    sysconfig["ng_metrics"] = ng_metrics
-    sysconfig["tariff_rates"] = rates
-    sysconfig["tariff_remaining"] = remaining
+def initial_load(api_key, gas, electric):
     get_jwt(api_key)
     get_device_id(gas, electric)
 
@@ -350,7 +345,7 @@ def read_meters(api_key):
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
                 for r_type, value in get_energy_reading(meter).items():
-                    update_gauge_ng(r_type, value, meter) if sysconfig["ng_metrics"] else update_gauge(r_type, value, meter)
+                    update_gauge_ng(r_type, value, meter) if Settings().ng_metrics else update_gauge(r_type, value, meter)
 
         time.sleep(interval)
 
