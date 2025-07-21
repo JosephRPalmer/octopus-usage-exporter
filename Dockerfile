@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app /app
 
-CMD python app.py
+CMD python octopus_usage_exporter.py
