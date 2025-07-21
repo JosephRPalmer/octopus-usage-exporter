@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 import logging
-import jwt
+from datetime import datetime, timedelta
+from jose import jwt
 import httpx
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
@@ -10,15 +11,29 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 class octopus_api_connection(BaseModel):
+    model_config = {
+        "arbitrary_types_allowed": True,
+    }
     api_key: str
     api_url: str = "https://api.octopus.energy/v1/"
     headers: dict = {}
     key: dict = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json").json()
-    client: Client = Client(transport=RequestsHTTPTransport(url="https://api.octopus.energy/v1/graphql/#", headers=headers, verify=True,retries=3), fetch_schema_from_transport=False)
+    client: Client = None
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.client = Client(
+            transport=RequestsHTTPTransport(
+                url="https://api.octopus.energy/v1/graphql/#",
+                headers=self.headers,
+                verify=True,
+                retries=3
+            ),
+            fetch_schema_from_transport=False
+        )
+        self.get_jwt(self.api_key)
 
     def check_jwt(self, api_key):
-
         try:
             user_info = jwt.decode(self.headers["Authorization"].split(" ")[1], key=self.key , algorithms=["RS256"])
             if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=2)):
@@ -43,9 +58,14 @@ class octopus_api_connection(BaseModel):
                 }
             }
         """)
-        jwt_query = oe_client.execute(query, variable_values={"apiKey": api_key})
+        jwt_query = self.client.execute(query, variable_values={"apiKey": api_key})
 
         self.headers["Authorization"] = "JWT {}".format(jwt_query['obtainKrakenToken']['token'])
 
         logging.info("JWT refresh success")
         return "jwt_query['obtainKrakenToken']['token']"
+
+    def get_client(self):
+        self.check_jwt(self.api_key)
+
+        return self.client

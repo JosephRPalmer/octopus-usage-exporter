@@ -16,6 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from gas_meter import gas_meter
 from electric_meter import electric_meter
+from octopus_api_connection import octopus_api_connection
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,19 +29,9 @@ gauges = {}
 prom_port = int(os.environ.get('PROM_PORT', 9120))
 account_number = os.environ.get('ACCOUNT_NUMBER')
 
-response = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json")
-key = response.json()
-
-
-headers = {}
-transport = RequestsHTTPTransport(url="https://api.octopus.energy/v1/graphql/#", headers=headers, verify=True,retries=3)
-
 meters = []
 
 interval = 1800
-
-oe_client = Client(transport=transport, fetch_schema_from_transport=False)
-
 class GaugeDefinitions(str, Enum):
     consumption= "Total consumption in kWh"
     demand= "Total demand in watts"
@@ -82,7 +73,7 @@ def start_prometheus_server():
     logging.info("Exporting Prometheus /metrics/ on port %s", prom_port)
 
 
-def get_device_id(gas, electric):
+def get_device_id(client, gas, electric):
     gas_query = gql("""
         query Account($accountNumber: String!) {
             account(accountNumber: $accountNumber) {
@@ -151,7 +142,7 @@ def get_device_id(gas, electric):
     """)
 
     if electric:
-        electric_query = oe_client.execute(elec_query, variable_values={"accountNumber": account_number})
+        electric_query = client.execute(elec_query, variable_values={"accountNumber": account_number})
         usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
                                if m['smartImportElectricityMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
@@ -169,7 +160,7 @@ def get_device_id(gas, electric):
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Electricity Tariff information: {}".format(electric_query["account"]["electricityAgreements"][0]["tariff"]["displayName"]))
     if gas:
-        gas_query = oe_client.execute(gas_query, variable_values={"accountNumber": account_number})
+        gas_query = client.execute(gas_query, variable_values={"accountNumber": account_number})
         usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
                                if m['smartGasMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
@@ -185,14 +176,14 @@ def get_device_id(gas, electric):
         logging.info("Gas Tariff information: {}".format(gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]))
 
 
-def get_energy_reading(meter):
+def get_energy_reading(client, meter):
     output_readings = {}
     # Dynamically build the query based on which agreement IDs are provided
     query = meter.get_jql_query()
     variables = {"deviceId": meter.device_id, "agreementId": meter.agreement}
 
     try:
-        reading_query_ex = oe_client.execute(query, variable_values=variables)
+        reading_query_ex = client.execute(query, variable_values=variables)
         returned_telemetry = reading_query_ex["smartMeterTelemetry"][0]
         if meter.meter_type == "electric":
             if reading_query_ex["electricityAgreement"]["isRevoked"]:
@@ -300,51 +291,13 @@ def update_gauge_ng(key: str, value, meter):
         logging.warning("Value for {} is not a float: {} - labels: {}".format(key, value, meter.return_labels()))
 
 
-def get_jwt(api_key):
-    logging.info("Dropping headers")
-    headers.clear()
-    if not bool(headers):
-        logging.info("Dropped headers, refreshing JWT")
-    else:
-        logging.warning("Failed to drop headers, trying to refresh JWT anyway")
-    query = gql("""
-        mutation ObtainKrakenToken($apiKey: String!) {
-            obtainKrakenToken(input: { APIKey: $apiKey}) {
-                token
-            }
-        }
-    """)
-    jwt_query = oe_client.execute(query, variable_values={"apiKey": api_key})
-
-    headers["Authorization"] = "JWT {}".format(jwt_query['obtainKrakenToken']['token'])
-
-    logging.info("JWT refresh success")
-    return "jwt_query['obtainKrakenToken']['token']"
-
-def initial_load(api_key, gas, electric):
-    get_jwt(api_key)
-    get_device_id(gas, electric)
-
-def check_jwt(api_key):
-
-    try:
-        user_info = jwt.decode(headers["Authorization"].split(" ")[1], key=key , algorithms=["RS256"])
-        if (datetime.fromtimestamp(user_info["exp"]) > datetime.now() + timedelta(minutes=2)):
-            logging.info("JWT valid until {}".format(datetime.fromtimestamp(user_info["exp"])))
-        else:
-            get_jwt(api_key)
-    except (jwt.ExpiredSignatureError, jwt.JWTError) as e:
-        logging.error("Hit error {} - {}, refreshing JWT".format(e.__class__.__name__, e))
-        get_jwt(api_key)
-
-
-def read_meters(api_key):
+def read_meters(api_connection):
     while True:
-        check_jwt(api_key)
+        client = api_connection.get_client()
         for meter in meters:
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
-                for r_type, value in get_energy_reading(meter).items():
+                for r_type, value in get_energy_reading(client, meter).items():
                     update_gauge_ng(r_type, value, meter) if Settings().ng_metrics else update_gauge(r_type, value, meter)
 
         time.sleep(interval)
@@ -364,9 +317,10 @@ def interval_rate_check():
 if __name__ == '__main__':
     logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
     interval_rate_check()
-    initial_load(Settings().api_key, Settings().gas, Settings().electric)
+    api_connection = octopus_api_connection(api_key=Settings().api_key)
+    get_device_id(api_connection.get_client(), Settings().gas, Settings().electric)
     for meter in meters:
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
     start_prometheus_server()
-    read_meters(Settings().account_number)
+    read_meters(api_connection)
 
