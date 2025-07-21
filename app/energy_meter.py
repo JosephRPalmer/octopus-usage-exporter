@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
 class energy_meter(BaseModel):
-    name: str
     device_id: str | None = None
     meter_type: str | None = None
     polling_interval: int | None = None
