@@ -139,7 +139,6 @@ def get_device_id(client, gas, electric):
                                if m['smartImportElectricityMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
         meters.append(electric_meter(
-            name="electric_meter",
             device_id=selected_smart_meter_device_id,
             meter_type="electric",
             polling_interval=Settings().interval,
@@ -156,8 +155,7 @@ def get_device_id(client, gas, electric):
         usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
                                if m['smartGasMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
-        meters.append(gas_meter(name="gas_meter",
-                                   device_id=selected_smart_meter_device_id, meter_type="gas",
+        meters.append(gas_meter(device_id=selected_smart_meter_device_id, meter_type="gas",
                                    polling_interval=1800,
                                    last_called=datetime.now()-timedelta(seconds=1800),
                                    reading_types=["consumption"] +
