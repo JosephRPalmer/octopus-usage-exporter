@@ -1,6 +1,5 @@
 from prometheus_client import MetricsHandler, Gauge
 from datetime import datetime, timedelta
-from enum import Enum
 import logging
 import os
 import threading
@@ -15,6 +14,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from gas_meter import gas_meter
 from electric_meter import electric_meter
 from octopus_api_connection import octopus_api_connection
+from utils import strip_device_id, from_iso, from_iso_timestamp
+from gauge_definitions import GaugeDefinitions
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,13 +31,6 @@ account_number = os.environ.get('ACCOUNT_NUMBER')
 meters = []
 
 interval = 1800
-class GaugeDefinitions(str, Enum):
-    consumption= "Total consumption in kWh"
-    demand= "Total demand in watts"
-    tariff_unit_rate= "Unit rate of the tariff in pence per kWh"
-    tariff_standing_charge= "Standing charge of the tariff in pence per day"
-    tariff_expiry= "Expiry date of the tariff in epoch seconds"
-    tariff_days_remaining= "Days remaining until the tariff expires"
 
 class PrometheusEndpointServer(threading.Thread):
     def __init__(self, httpd, *args, **kwargs):
@@ -188,7 +182,7 @@ def get_energy_reading(client, meter):
                 logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
                 return {}
             if reading_query_ex["electricityAgreement"]["validTo"]:
-                valid_to = datetime.fromisoformat(reading_query_ex["electricityAgreement"]["validTo"])
+                valid_to = from_iso(reading_query_ex["electricityAgreement"]["validTo"])
                 if valid_to < datetime.now(valid_to.tzinfo):
                     logging.warning("Electricity agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
                     return {}
@@ -199,14 +193,14 @@ def get_energy_reading(client, meter):
                 logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
                 return {}
             if reading_query_ex["gasAgreement"]["validTo"]:
-                valid_to = datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"])
+                valid_to = from_iso(reading_query_ex["gasAgreement"]["validTo"])
                 if valid_to < datetime.now(valid_to.tzinfo):
                     logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
                     return {}
                 output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
                 output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
-                output_readings["tariff_expiry"] = datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).timestamp()
-                output_readings["tariff_days_remaining"] = (datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(datetime.fromisoformat(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
+                output_readings["tariff_expiry"] = from_iso_timestamp(reading_query_ex["gasAgreement"]["validTo"])
+                output_readings["tariff_days_remaining"] = (from_iso(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(from_iso(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
         for wanted_type in meter.reading_types:
             if output_readings.get(wanted_type) is not None:
                 pass
@@ -239,8 +233,8 @@ def electricity_tariff_parser(tariff):
         # Find the unit rate valid for now
         current_rate = None
         for rate in t["unitRates"]:
-            valid_from = datetime.fromisoformat(rate["validFrom"])
-            valid_to = datetime.fromisoformat(rate["validTo"])
+            valid_from = from_iso(rate["validFrom"])
+            valid_to = from_iso(rate["validTo"])
             if valid_from <= now and now < valid_to:
                 current_rate = rate["value"]
                 break
@@ -257,10 +251,9 @@ def electricity_tariff_parser(tariff):
 
     output_map["tariff_standing_charge"] = t["standingCharge"]
     if tariff.get("validTo") and tariff.get("validTo") != "null":
-        valid_to_dt = datetime.fromisoformat(tariff.get("validTo"))
-        now = datetime.now(valid_to_dt.tzinfo)
-        output_map["tariff_expiry"] = valid_to_dt.timestamp()
-        output_map["tariff_days_remaining"] = (valid_to_dt - now).days
+        now = datetime.now(from_iso(tariff.get("validTo")).tzinfo)
+        output_map["tariff_expiry"] = from_iso_timestamp(tariff.get("validTo"))
+        output_map["tariff_days_remaining"] = (from_iso(tariff.get("validTo")) - now).days
 
     return output_map
 
@@ -299,9 +292,6 @@ def read_meters(api_connection):
                     update_gauge_ng(r_type, value, meter) if Settings().ng_metrics else update_gauge(r_type, value, meter)
 
         time.sleep(interval)
-
-def strip_device_id(id):
-    return id.replace('-','')
 
 def interval_rate_check():
     global interval
