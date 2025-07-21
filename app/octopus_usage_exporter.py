@@ -1,14 +1,12 @@
 from prometheus_client import MetricsHandler, Gauge
-import httpx
 from datetime import datetime, timedelta
 from enum import Enum
-from jose import jwt
 import logging
 import os
 import threading
 import time
 from http.server import HTTPServer
-from gql import Client, gql
+from gql import gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
 from pydantic_settings import BaseSettings, SettingsConfigDict

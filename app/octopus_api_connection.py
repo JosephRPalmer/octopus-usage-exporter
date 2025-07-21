@@ -15,16 +15,17 @@ class octopus_api_connection(BaseModel):
         "arbitrary_types_allowed": True,
     }
     api_key: str
-    api_url: str = "https://api.octopus.energy/v1/"
+    api_url: str = "https://api.octopus.energy/v1/graphql/"
     headers: dict = {}
-    key: dict = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json").json()
+    key: dict = {}
     client: Client = None
 
     def __init__(self, **data):
         super().__init__(**data)
+        self.key = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json").json()
         self.client = Client(
             transport=RequestsHTTPTransport(
-                url="https://api.octopus.energy/v1/graphql/#",
+                url=self.api_url,
                 headers=self.headers,
                 verify=True,
                 retries=3
