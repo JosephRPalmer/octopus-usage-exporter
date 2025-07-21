@@ -302,8 +302,8 @@ def interval_rate_check():
         if (interval <= 180):
             logging.warning("Attention! If you proceed with an interval below 60 you will likely hit an API rate limit set by Octopus Energy.")
 
-if __name__ == '__main__':
-    logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
+
+def exporter():
     interval_rate_check()
     api_connection = octopus_api_connection(api_key=Settings().api_key)
     get_device_id(api_connection.get_client(), Settings().gas, Settings().electric)
@@ -311,4 +311,10 @@ if __name__ == '__main__':
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
     start_prometheus_server()
     read_meters(api_connection)
+
+
+if __name__ == '__main__':
+    logging.info("Octopus Energy Exporter by JRP - Version {}".format(version))
+    exporter()
+
 
