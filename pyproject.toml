@@ -1,4 +1,5 @@
 [project]
+name = "octopus-usage-exporter"
 authors = [{ name = "Joseph Ryan-Palmer", email = "joseph@ryan-palmer.com" }]
 version = "0.1.4"
 description = "Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini."
@@ -8,7 +9,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "gql==3.4.1",
-    "httpx==0.25.1",
     "prometheus-client==0.22.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
@@ -16,7 +16,7 @@ dependencies = [
     "requests==2.32.4",
     "requests-toolbelt==1.0.0",
 ]
-name = "octopus-usage-exporter"
+
 
 [project.urls]
 Repository = "https://github.com/josephrpalmer/octopus-usage-exporter.git"

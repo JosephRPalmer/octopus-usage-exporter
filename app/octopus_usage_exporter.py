@@ -6,7 +6,6 @@ import threading
 import time
 from http.server import HTTPServer
 from gql import gql
-from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -17,10 +16,10 @@ from octopus_api_connection import octopus_api_connection
 from utils import strip_device_id, from_iso, from_iso_timestamp
 from gauge_definitions import GaugeDefinitions
 
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-requests_logger.setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 version = "0.1.4"
 gauges = {}

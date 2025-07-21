@@ -2,13 +2,14 @@ from pydantic import BaseModel
 import logging
 from datetime import datetime, timedelta
 from jose import jwt
-import httpx
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
-from gql.transport.exceptions import TransportQueryError
+import requests
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger("requests.packages.urllib3").setLevel(logging.WARNING)
+requests_logger.setLevel(logging.WARNING)
 
 class octopus_api_connection(BaseModel):
     model_config = {
@@ -22,7 +23,7 @@ class octopus_api_connection(BaseModel):
 
     def __init__(self, **data):
         super().__init__(**data)
-        self.key = httpx.get(url="https://auth.octopus.energy/.well-known/jwks.json").json()
+        self.key = requests.get(url="https://auth.octopus.energy/.well-known/jwks.json").json()
         self.client = Client(
             transport=RequestsHTTPTransport(
                 url=self.api_url,
