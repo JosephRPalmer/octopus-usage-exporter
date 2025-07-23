@@ -173,42 +173,42 @@ def get_energy_reading(client, meter):
     try:
         reading_query_ex = client.execute(query, variable_values=variables)
         returned_telemetry = reading_query_ex["smartMeterTelemetry"][0]
+
+        if meter.meter_type == "electric":
+            if reading_query_ex["electricityAgreement"]["isRevoked"]:
+                logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
+                return {}
+            if reading_query_ex["electricityAgreement"]["validTo"]:
+                valid_to = from_iso(reading_query_ex["electricityAgreement"]["validTo"])
+                if valid_to < datetime.now(valid_to.tzinfo):
+                    logging.warning("Electricity agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
+                    return {}
+            for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
+                output_readings[key] = value
+        elif meter.meter_type == "gas":
+            if reading_query_ex["gasAgreement"]["isRevoked"]:
+                logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
+                return {}
+            if reading_query_ex["gasAgreement"]["validTo"]:
+                valid_to = from_iso(reading_query_ex["gasAgreement"]["validTo"])
+                if valid_to < datetime.now(valid_to.tzinfo):
+                    logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
+                    return {}
+                output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
+                output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
+                output_readings["tariff_expiry"] = from_iso_timestamp(reading_query_ex["gasAgreement"]["validTo"])
+                output_readings["tariff_days_remaining"] = (from_iso(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(from_iso(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
+        for wanted_type in meter.reading_types:
+            if output_readings.get(wanted_type) is not None:
+                pass
+            elif returned_telemetry.get(wanted_type) is not None:
+                output_readings[wanted_type] = returned_telemetry.get(wanted_type)
+            else:
+                output_readings[wanted_type] = 0
+            logging.debug("Meter: {} - Type: {} - Fuel: {} - Reading: {}".format(meter.device_id, wanted_type, meter.meter_type, output_readings.get(wanted_type)))
     except IndexError:
         if not reading_query_ex["smartMeterTelemetry"]:
             logging.error("Octopus API returned no consumption or demand data for {}".format(meter.device_id))
-
-    if meter.meter_type == "electric":
-        if reading_query_ex["electricityAgreement"]["isRevoked"]:
-            logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
-            return {}
-        if reading_query_ex["electricityAgreement"]["validTo"]:
-            valid_to = from_iso(reading_query_ex["electricityAgreement"]["validTo"])
-            if valid_to < datetime.now(valid_to.tzinfo):
-                logging.warning("Electricity agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
-                return {}
-        for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
-            output_readings[key] = value
-    elif meter.meter_type == "gas":
-        if reading_query_ex["gasAgreement"]["isRevoked"]:
-            logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
-            return {}
-        if reading_query_ex["gasAgreement"]["validTo"]:
-            valid_to = from_iso(reading_query_ex["gasAgreement"]["validTo"])
-            if valid_to < datetime.now(valid_to.tzinfo):
-                logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
-                return {}
-            output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
-            output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
-            output_readings["tariff_expiry"] = from_iso_timestamp(reading_query_ex["gasAgreement"]["validTo"])
-            output_readings["tariff_days_remaining"] = (from_iso(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(from_iso(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
-    for wanted_type in meter.reading_types:
-        if output_readings.get(wanted_type) is not None:
-            pass
-        elif returned_telemetry.get(wanted_type) is not None:
-            output_readings[wanted_type] = returned_telemetry.get(wanted_type)
-        else:
-            output_readings[wanted_type] = 0
-        logging.debug("Meter: {} - Type: {} - Fuel: {} - Reading: {}".format(meter.device_id, wanted_type, meter.meter_type, output_readings.get(wanted_type)))
 
     logging.info("Meter: {} - {} metrics collected".format(meter.device_id, len(output_readings)))
     return output_readings
