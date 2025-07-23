@@ -35,7 +35,7 @@ class octopus_api_connection(BaseModel):
                 headers=self.headers,
                 verify=True,
                 retries=2,
-                timeout=10),
+                timeout=20),
             fetch_schema_from_transport=False
         )
         self.get_jwt()
