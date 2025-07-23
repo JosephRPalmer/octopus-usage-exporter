@@ -7,12 +7,13 @@ from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
 from urllib3.exceptions import ResponseError
 import requests
-import time
-from retrying import retry
+import backoff
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger('backoff').addHandler(logging.StreamHandler())
 logging.getLogger("requests.packages.urllib3").setLevel(logging.WARNING)
+logging.getLogger('backoff').setLevel(logging.WARNING)
 requests_logger.setLevel(logging.WARNING)
 
 class octopus_api_connection(BaseModel):
@@ -84,7 +85,7 @@ class octopus_api_connection(BaseModel):
         self.check_jwt()
         return self.run_query(query, variable_values)
 
-    @retry(stop_max_attempt_number=5, wait_exponential_multiplier=1000, wait_exponential_max=10000)
+    @backoff.on_exception(backoff.expo,(TransportQueryError, ResponseError, requests.exceptions.ConnectionError), max_tries=5, jitter=backoff.full_jitter)
     def run_query(self, query, variable_values=None):
         try:
             return self.client.execute(query, variable_values=variable_values)
