@@ -15,6 +15,7 @@ dependencies = [
     "python-jose==3.4.0",
     "requests==2.32.4",
     "requests-toolbelt==1.0.0",
+    "retrying>=1.4.1",
 ]
 
 

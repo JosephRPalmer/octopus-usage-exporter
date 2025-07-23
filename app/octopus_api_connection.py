@@ -8,6 +8,7 @@ from gql.transport.exceptions import TransportQueryError
 from urllib3.exceptions import ResponseError
 import requests
 import time
+from retrying import retry
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -32,7 +33,7 @@ class octopus_api_connection(BaseModel):
                 url=self.api_url,
                 headers=self.headers,
                 verify=True,
-                retries=3,
+                retries=2,
                 timeout=10),
             fetch_schema_from_transport=False
         )
@@ -83,30 +84,17 @@ class octopus_api_connection(BaseModel):
         self.check_jwt()
         return self.run_query(query, variable_values)
 
+    @retry(stop_max_attempt_number=5, wait_exponential_multiplier=1000, wait_exponential_max=10000)
     def run_query(self, query, variable_values=None):
         try:
             return self.client.execute(query, variable_values=variable_values)
         except TransportQueryError as e:
             logging.error("Possible rate limit hit, increase call interval")
             logging.error(e)
-            return None
+            raise  # Raise to trigger retry
         except ResponseError as e:
             logging.error("Response error: {}".format(e))
-            max_retries = 5
-            delay = 1
-            for attempt in range(max_retries):
-                if hasattr(e, 'status') and 500 <= e.status < 600:
-                    logging.info(f"Retrying after {delay} seconds (attempt {attempt + 1}/{max_retries}) due to server error...")
-                    time.sleep(delay)
-                    delay *= 2
-                    try:
-                        return self.client.execute(query, variable_values=variable_values)
-                    except ResponseError as e2:
-                        logging.error("Response error on retry: {}".format(e2))
-                    continue
-                else:
-                    break
-            return None
+            raise  # Raise to trigger retry
         except Exception as e:
             logging.error("Error executing query: {}".format(e))
-            return None
+            raise  # Raise to trigger retry
