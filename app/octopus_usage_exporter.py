@@ -6,7 +6,6 @@ import threading
 import time
 from http.server import HTTPServer
 from gql import gql
-from gql.transport.exceptions import TransportQueryError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-version = "0.1.4"
+version = "0.1.5"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))
@@ -174,44 +173,43 @@ def get_energy_reading(client, meter):
     try:
         reading_query_ex = client.execute(query, variable_values=variables)
         returned_telemetry = reading_query_ex["smartMeterTelemetry"][0]
-        if meter.meter_type == "electric":
-            if reading_query_ex["electricityAgreement"]["isRevoked"]:
-                logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
-                return {}
-            if reading_query_ex["electricityAgreement"]["validTo"]:
-                valid_to = from_iso(reading_query_ex["electricityAgreement"]["validTo"])
-                if valid_to < datetime.now(valid_to.tzinfo):
-                    logging.warning("Electricity agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
-                    return {}
-            for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
-                output_readings[key] = value
-        elif meter.meter_type == "gas":
-            if reading_query_ex["gasAgreement"]["isRevoked"]:
-                logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
-                return {}
-            if reading_query_ex["gasAgreement"]["validTo"]:
-                valid_to = from_iso(reading_query_ex["gasAgreement"]["validTo"])
-                if valid_to < datetime.now(valid_to.tzinfo):
-                    logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
-                    return {}
-                output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
-                output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
-                output_readings["tariff_expiry"] = from_iso_timestamp(reading_query_ex["gasAgreement"]["validTo"])
-                output_readings["tariff_days_remaining"] = (from_iso(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(from_iso(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
-        for wanted_type in meter.reading_types:
-            if output_readings.get(wanted_type) is not None:
-                pass
-            elif returned_telemetry.get(wanted_type) is not None:
-                output_readings[wanted_type] = returned_telemetry.get(wanted_type)
-            else:
-                output_readings[wanted_type] = 0
-            logging.debug("Meter: {} - Type: {} - Fuel: {} - Reading: {}".format(meter.device_id, wanted_type, meter.meter_type, output_readings.get(wanted_type)))
-    except TransportQueryError as e:
-        logging.warning("Possible rate limit hit, increase call interval")
-        logging.warning(e)
     except IndexError:
         if not reading_query_ex["smartMeterTelemetry"]:
             logging.error("Octopus API returned no consumption or demand data for {}".format(meter.device_id))
+
+    if meter.meter_type == "electric":
+        if reading_query_ex["electricityAgreement"]["isRevoked"]:
+            logging.warning("Electricity agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
+            return {}
+        if reading_query_ex["electricityAgreement"]["validTo"]:
+            valid_to = from_iso(reading_query_ex["electricityAgreement"]["validTo"])
+            if valid_to < datetime.now(valid_to.tzinfo):
+                logging.warning("Electricity agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
+                return {}
+        for key,value in electricity_tariff_parser(reading_query_ex["electricityAgreement"]).items():
+            output_readings[key] = value
+    elif meter.meter_type == "gas":
+        if reading_query_ex["gasAgreement"]["isRevoked"]:
+            logging.warning("Gas agreement {} is revoked, no tariff information will be returned.".format(meter.agreement))
+            return {}
+        if reading_query_ex["gasAgreement"]["validTo"]:
+            valid_to = from_iso(reading_query_ex["gasAgreement"]["validTo"])
+            if valid_to < datetime.now(valid_to.tzinfo):
+                logging.warning("Gas agreement {} is no longer valid, no tariff information will be returned".format(meter.agreement))
+                return {}
+            output_readings["tariff_unit_rate"] = reading_query_ex["gasAgreement"]["tariff"]["unitRate"]
+            output_readings["tariff_standing_charge"] = reading_query_ex["gasAgreement"]["tariff"]["standingCharge"]
+            output_readings["tariff_expiry"] = from_iso_timestamp(reading_query_ex["gasAgreement"]["validTo"])
+            output_readings["tariff_days_remaining"] = (from_iso(reading_query_ex["gasAgreement"]["validTo"]) - datetime.now(from_iso(reading_query_ex["gasAgreement"]["validTo"]).tzinfo)).days
+    for wanted_type in meter.reading_types:
+        if output_readings.get(wanted_type) is not None:
+            pass
+        elif returned_telemetry.get(wanted_type) is not None:
+            output_readings[wanted_type] = returned_telemetry.get(wanted_type)
+        else:
+            output_readings[wanted_type] = 0
+        logging.debug("Meter: {} - Type: {} - Fuel: {} - Reading: {}".format(meter.device_id, wanted_type, meter.meter_type, output_readings.get(wanted_type)))
+
     logging.info("Meter: {} - {} metrics collected".format(meter.device_id, len(output_readings)))
     return output_readings
 
@@ -281,11 +279,10 @@ def update_gauge_ng(key: str, value, meter):
 
 def read_meters(api_connection):
     while True:
-        client = api_connection.get_client()
         for meter in meters:
             if (meter.last_called + timedelta(seconds=meter.polling_interval) <= datetime.now()):
                 meter.last_called = datetime.now()
-                for r_type, value in get_energy_reading(client, meter).items():
+                for r_type, value in get_energy_reading(api_connection, meter).items():
                     update_gauge_ng(r_type, value, meter) if Settings().ng_metrics else update_gauge(r_type, value, meter)
 
         time.sleep(interval)
@@ -303,7 +300,7 @@ def interval_rate_check():
 def exporter():
     interval_rate_check()
     api_connection = octopus_api_connection(api_key=Settings().api_key)
-    get_device_id(api_connection.get_client(), Settings().gas, Settings().electric)
+    get_device_id(api_connection, Settings().gas, Settings().electric)
     for meter in meters:
         logging.info("Starting to read {} meter every {} seconds".format(meter.meter_type, meter.polling_interval))
     start_prometheus_server()

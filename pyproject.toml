@@ -1,7 +1,7 @@
 [project]
 name = "octopus-usage-exporter"
 authors = [{ name = "Joseph Ryan-Palmer", email = "joseph@ryan-palmer.com" }]
-version = "0.1.4"
+version = "0.1.5"
 description = "Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini."
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
