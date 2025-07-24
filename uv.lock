@@ -142,9 +142,10 @@ wheels = [
 
 [[package]]
 name = "octopus-usage-exporter"
-version = "0.1.4"
+version = "0.1.5"
 source = { virtual = "." }
 dependencies = [
+    { name = "backoff" },
     { name = "gql" },
     { name = "prometheus-client" },
     { name = "pydantic" },
@@ -156,6 +157,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "backoff", specifier = ">=2.2.1" },
     { name = "gql", specifier = "==3.4.1" },
     { name = "prometheus-client", specifier = "==0.22.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
