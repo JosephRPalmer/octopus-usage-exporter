@@ -27,7 +27,7 @@ Returns:
   - `ACCOUNT_NUMBER=A-ABC12E04` (Octopus Energy Account number)
   - `GAS=True` (Gas stat scraping)
   - `ELECTRIC=True` (Electric stat scraping)
-  - `NG_METRICS=False` (New for 0.0.24, metrics move to use a proper label format outside of metric names. Defaults to false with existing metric format, setting to True will enable new formatting. This behaviour will change in future major release.)
+  - `NG_METRICS=True` (New for 0.0.24, metrics move to use a proper label format outside of metric names. Defaults to false with existing metric format, setting to True will enable new formatting. This behaviour will change in future major release.)
   - `TARIFF_RATES=True` (Tariff pricing scraping)
   - `TARIFF_REMAINING=True` (Tariff agreement time remaining scrape and calculation)
 - Ensure the ports exposed in the docker compose match the port referenced under PROM_PORT
@@ -77,7 +77,7 @@ services:
       - ACCOUNT_NUMBER=A-ABC12E04
       - GAS=True
       - ELECTRIC=True
-      - NG_METRICS=False
+      - NG_METRICS=True
       - TARIFF_RATES=True
       - TARIFF_REMAINING=True
     ports:
@@ -87,8 +87,11 @@ services:
 
 ## Grafana Dashboard Example
 
-An example [grafana dashboard](./examples/grafana_dashboard.json) can be found in the
+An example [grafana dashboard](./examples/grafana_dashboard_ng.json) can be found in the
 examples directory. This shows stats relating to current, max, min and average consumption, as well
 as total consumption.
+
+If you are using the legacy metrics format (`NG_METRICS=False`) use [this dashboard](./examples/grafana_dashboard_legacy.json)
+instead.
 
 ![](./examples/grafana_dashboard.png)
