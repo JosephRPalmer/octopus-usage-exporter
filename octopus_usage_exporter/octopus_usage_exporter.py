@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-version = "0.1.5"
+version = "0.1.6"
 gauges = {}
 
 prom_port = int(os.environ.get('PROM_PORT', 9120))

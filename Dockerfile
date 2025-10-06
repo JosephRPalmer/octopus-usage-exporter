@@ -1,11 +1,11 @@
 FROM python:3.13-alpine
 
-WORKDIR /app
+WORKDIR /octopus_usage_exporter
 
 COPY pyproject.toml .
 
 RUN pip install --no-cache-dir .
 
-COPY app /app
+COPY octopus_usage_exporter /octopus_usage_exporter
 
 CMD python octopus_usage_exporter.py
