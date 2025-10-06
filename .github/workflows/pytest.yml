@@ -21,6 +21,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest prometheus-client "gql[all]" pydantic-settings
       - name: Test with pytest
-        run: |
-          pytest
-        working-directory: ./octopus_usage_exporter
+        run: python -m pytest tests/
