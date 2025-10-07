@@ -7,14 +7,15 @@ from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
 from urllib3.exceptions import ResponseError
 import requests
-from tenacity import retry, wait_exponential, retry_if_exception_type
+from tenacity import retry, wait_exponential, retry_if_exception_type, after_log
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logging.getLogger('backoff').addHandler(logging.StreamHandler())
 logging.getLogger("requests.packages.urllib3").setLevel(logging.WARNING)
-logging.getLogger('backoff').setLevel(logging.WARNING)
 requests_logger.setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
+
 
 class octopus_api_connection(BaseModel):
     model_config = {
@@ -85,7 +86,7 @@ class octopus_api_connection(BaseModel):
         self.check_jwt()
         return self.run_query(query, variable_values)
 
-    @retry(retry=retry_if_exception_type((TransportQueryError, ResponseError, requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout)), wait=wait_exponential(multiplier=1, min=10, max=90))
+    @retry(retry=retry_if_exception_type((TransportQueryError, ResponseError, requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout)), wait=wait_exponential(multiplier=1, min=10, max=90), after=after_log(logger, logging.INFO),)
     def run_query(self, query, variable_values=None):
         try:
             return self.client.execute(query, variable_values=variable_values)
