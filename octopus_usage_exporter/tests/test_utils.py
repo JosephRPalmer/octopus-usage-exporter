@@ -8,13 +8,13 @@ def test_strip_device_id():
     assert utils.strip_device_id('plainid') == 'plainid'
 
 def test_from_iso():
-    date_str = '2023-01-01T12:34:56'
+    date_str = '2024-11-19T12:34:56'
     dt = utils.from_iso(date_str)
     assert isinstance(dt, datetime)
-    assert dt == datetime(2023, 1, 1, 12, 34, 56)
+    assert dt == datetime(2024, 11, 19, 12, 34, 56)
 
 def test_from_iso_timestamp():
-    date_str = '2023-01-01T12:34:56'
+    date_str = '2024-11-19T12:34:56'
     ts = utils.from_iso_timestamp(date_str)
-    expected_ts = datetime(2023, 1, 1, 12, 34, 56).timestamp()
+    expected_ts = datetime(2024, 11, 19, 12, 34, 56).timestamp()
     assert abs(ts - expected_ts) < 1e-6
