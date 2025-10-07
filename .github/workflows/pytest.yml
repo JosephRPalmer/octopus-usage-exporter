@@ -1,4 +1,4 @@
-name: Run Unit Tests
+name: Run Python Tests
 permissions:
   contents: read
 
