@@ -7,7 +7,7 @@ from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
 from urllib3.exceptions import ResponseError
 import requests
-import backoff
+from tenacity import retry, wait_exponential, retry_if_exception_type
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -85,7 +85,7 @@ class octopus_api_connection(BaseModel):
         self.check_jwt()
         return self.run_query(query, variable_values)
 
-    @backoff.on_exception(backoff.expo,(TransportQueryError, ResponseError, requests.exceptions.ConnectionError), max_tries=5, jitter=backoff.full_jitter)
+    @retry(retry=retry_if_exception_type((TransportQueryError, ResponseError, requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout)), wait=wait_exponential(multiplier=1, min=10, max=90))
     def run_query(self, query, variable_values=None):
         try:
             return self.client.execute(query, variable_values=variable_values)
