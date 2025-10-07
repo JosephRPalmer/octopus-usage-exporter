@@ -10,8 +10,8 @@ requires-python = ">=3.13"
 dependencies = [
     "gql==4.0.0",
     "prometheus-client==0.23.1",
-    "pydantic>=2.11.9",
-    "pydantic-settings>=2.10.1",
+    "pydantic>=2.11.10",
+    "pydantic-settings>=2.11.0",
     "pytest>=8.4.2",
     "python-jose==3.5.0",
     "requests==2.32.5",
