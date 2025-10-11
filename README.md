@@ -1,6 +1,6 @@
 # Octopus Usage Exporter
 
-![GitHub Tag](https://img.shields.io/github/v/tag/josephrpalmer/octopus-usage-exporter)  &nbsp;&nbsp;![GitHub Release Date](https://img.shields.io/github/release-date/josephrpalmer/octopus-usage-exporter) &nbsp; &nbsp; ![GitHub License](https://img.shields.io/github/license/josephrpalmer/octopus-usage-exporter)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/josephrpalmer/octopus-usage-exporter/pytest.yml?label=tests) &nbsp;&nbsp;![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/josephrpalmer/octopus-usage-exporter/docker-build.yml)&nbsp;&nbsp;![GitHub Release Date](https://img.shields.io/github/release-date/josephrpalmer/octopus-usage-exporter)&nbsp;&nbsp;![GitHub License](https://img.shields.io/github/license/josephrpalmer/octopus-usage-exporter)
 
 
 
@@ -95,3 +95,4 @@ If you are using the legacy metrics format (`NG_METRICS=False`) use [this dashbo
 instead.
 
 ![](./examples/grafana_dashboard.png)
+
