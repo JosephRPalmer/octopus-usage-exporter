@@ -106,6 +106,8 @@ configMapGenerator:
     behavior: replace
     literals:
       - ACCOUNT_NUMBER=<change me>
+      - PROM_PORT=9200
+      - INTERVAL=30
       - GAS=True|False
       - ELECTRIC=True|False
       - NG_METRICS=True|False
