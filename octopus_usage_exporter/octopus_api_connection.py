@@ -86,7 +86,7 @@ class octopus_api_connection(BaseModel):
         self.check_jwt()
         return self.run_query(query, variable_values)
 
-    @retry(retry=retry_if_exception_type((TransportQueryError, ResponseError, requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout)), wait=wait_exponential(multiplier=1, min=10, max=90), after=after_log(logger, logging.INFO),)
+    @retry(retry=retry_if_exception_type((TransportQueryError, ResponseError, requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout)), wait=wait_exponential(multiplier=1, min=10, max=90), after=after_log(logger, logging.INFO),)
     def run_query(self, query, variable_values=None):
         try:
             return self.client.execute(query, variable_values=variable_values)
