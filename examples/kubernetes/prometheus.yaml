@@ -2,7 +2,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: octopus
-  namespace: octopus-exporter
 spec:
   selector:
     matchLabels:
