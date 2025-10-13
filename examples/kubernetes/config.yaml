@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: octopus
+data:
+  ACCOUNT_NUMBER: ""
+  PROM_PORT: "9120"
+  INTERVAL: "60"
+  GAS: "False"
+  ELECTRIC: "True"
+  NG_METRICS: "False"
+  TARIFF_RATES: "True"
+  TARIFF_REMAINING: "True"
