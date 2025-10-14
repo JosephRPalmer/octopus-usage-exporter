@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: octopus
+  labels:
+    app: octopus
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: octopus
+  template:
+    metadata:
+      name: octopus
+      labels:
+        app: octopus
+    spec:
+      containers:
+        - name: octopus
+          image: ghcr.io/josephrpalmer/octopus-usage-exporter:0.1.6
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: octopus
+            - secretRef:
+                name: octopus
+          ports:
+            - containerPort: 9120
+              protocol: TCP
+      restartPolicy: Always

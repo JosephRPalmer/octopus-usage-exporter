@@ -1,0 +1,10 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: octopus
+spec:
+  selector:
+    matchLabels:
+      app: octopus
+  podMetricsEndpoints:
+    - portNumber: 9120
