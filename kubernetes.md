@@ -1,14 +1,12 @@
 # Kubernetes
 
-> [!NOTE]  
-> This is maintained by @userbradley
 
 ## Manual Deployment
 
 Create a namespace
 
 ```shell
-kubectl create namespace octopus-exporter
+kubectl create namespace octopus-usage-exporter
 ```
 
 Create your API Key Secret
