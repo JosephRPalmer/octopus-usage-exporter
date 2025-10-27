@@ -5,7 +5,7 @@ from jose import jwt
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
 from gql.transport.exceptions import TransportQueryError
-from urllib3.exceptions import ResponseError
+from urllib3.exceptions import ResponseError, RequestError, HTTPError
 import requests
 from tenacity import retry, wait_exponential, retry_if_exception_type, after_log
 
@@ -86,7 +86,19 @@ class octopus_api_connection(BaseModel):
         self.check_jwt()
         return self.run_query(query, variable_values)
 
-    @retry(retry=retry_if_exception_type((TransportQueryError, ResponseError, requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout)), wait=wait_exponential(multiplier=1, min=10, max=90), after=after_log(logger, logging.INFO),)
+    @retry(
+        retry=retry_if_exception_type(
+            (
+                TransportQueryError,
+                ResponseError,
+                RequestError,
+                HTTPError,
+                requests.exceptions.RequestException
+            )
+        ),
+        wait=wait_exponential(multiplier=1, min=10, max=90),
+        after=after_log(logger, logging.INFO),
+    )
     def run_query(self, query, variable_values=None):
         try:
             return self.client.execute(query, variable_values=variable_values)
