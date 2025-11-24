@@ -129,7 +129,7 @@ def get_device_id(client, gas, electric):
     """)
 
     if electric:
-        electric_query = client.execute(elec_query, variable_values={"accountNumber": account_number})
+        electric_query = client.execute(elec_query, variable_values={"accountNumber": Settings().account_number})
         usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
                                if m['smartImportElectricityMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
@@ -146,7 +146,7 @@ def get_device_id(client, gas, electric):
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
         logging.info("Electricity Tariff information: {}".format(electric_query["account"]["electricityAgreements"][0]["tariff"]["displayName"]))
     if gas:
-        gas_query = client.execute(gas_query, variable_values={"accountNumber": account_number})
+        gas_query = client.execute(gas_query, variable_values={"accountNumber": Settings().account_number})
         usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
                                if m['smartGasMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
