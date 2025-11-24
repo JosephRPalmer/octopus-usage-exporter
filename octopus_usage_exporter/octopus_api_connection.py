@@ -4,7 +4,14 @@ from datetime import datetime, timedelta
 from jose import jwt
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
-from gql.transport.exceptions import TransportQueryError, TransportConnectionFailed
+from gql.transport.exceptions import (
+    TransportQueryError,
+    TransportConnectionFailed,
+    TransportServerError,
+    TransportProtocolError,
+    TransportAlreadyConnected,
+    TransportClosed
+)
 from urllib3.exceptions import ResponseError, RequestError, HTTPError
 import requests
 from tenacity import retry, wait_exponential, retry_if_exception_type, after_log
@@ -90,6 +97,10 @@ class octopus_api_connection(BaseModel):
             (
                 TransportQueryError,
                 TransportConnectionFailed,
+                TransportServerError,
+                TransportProtocolError,
+                TransportAlreadyConnected,
+                TransportClosed,
                 ResponseError,
                 RequestError,
                 HTTPError,
@@ -105,6 +116,9 @@ class octopus_api_connection(BaseModel):
         except TransportQueryError as e:
             logging.error("Possible rate limit hit, increase call interval")
             logging.error(e)
+            raise  # Raise to trigger retry
+        except (TransportConnectionFailed, TransportServerError, TransportProtocolError, TransportAlreadyConnected, TransportClosed) as e:
+            logging.error("Transport error: {}".format(e))
             raise  # Raise to trigger retry
         except ResponseError as e:
             logging.error("Response error: {}".format(e))
