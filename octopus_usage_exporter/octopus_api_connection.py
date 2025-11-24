@@ -34,7 +34,7 @@ class octopus_api_connection(BaseModel):
                 url=self.api_url,
                 headers=self.headers,
                 verify=True,
-                retries=2,
+                retries=0,
                 timeout=20),
             fetch_schema_from_transport=False
         )
@@ -97,7 +97,7 @@ class octopus_api_connection(BaseModel):
             )
         ),
         wait=wait_exponential(multiplier=1, min=10, max=90),
-        after=after_log(logger, logging.INFO),
+        after=after_log(logger, logging.WARN),
     )
     def run_query(self, query, variable_values=None):
         try:
