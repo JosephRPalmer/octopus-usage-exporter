@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from jose import jwt
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport, log as requests_logger
-from gql.transport.exceptions import TransportQueryError
+from gql.transport.exceptions import TransportQueryError, TransportConnectionFailed
 from urllib3.exceptions import ResponseError, RequestError, HTTPError
 import requests
 from tenacity import retry, wait_exponential, retry_if_exception_type, after_log
@@ -90,6 +90,7 @@ class octopus_api_connection(BaseModel):
         retry=retry_if_exception_type(
             (
                 TransportQueryError,
+                TransportConnectionFailed,
                 ResponseError,
                 RequestError,
                 HTTPError,
