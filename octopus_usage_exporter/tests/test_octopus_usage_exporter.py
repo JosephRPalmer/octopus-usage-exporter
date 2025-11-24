@@ -273,13 +273,15 @@ class TestStartPrometheusServer(unittest.TestCase):
             def start(self):
                 started['started'] = True
         with patch('octopus_usage_exporter.octopus_usage_exporter.HTTPServer', return_value=FakeHTTP()), \
-             patch('octopus_usage_exporter.octopus_usage_exporter.PrometheusEndpointServer', FakeThread):
+             patch('octopus_usage_exporter.octopus_usage_exporter.PrometheusEndpointServer', FakeThread), \
+             patch('octopus_usage_exporter.octopus_usage_exporter.Settings', side_effect=lambda: DummySettings()):
             exporter_module.start_prometheus_server()
         self.assertTrue(started.get('created'))
         self.assertTrue(started.get('started'))
 
     def test_start_failure(self):
-        with patch('octopus_usage_exporter.octopus_usage_exporter.HTTPServer', side_effect=OSError('fail')):
+        with patch('octopus_usage_exporter.octopus_usage_exporter.HTTPServer', side_effect=OSError('fail')), \
+             patch('octopus_usage_exporter.octopus_usage_exporter.Settings', side_effect=lambda: DummySettings()):
             self.assertIsNone(exporter_module.start_prometheus_server())
 
 
