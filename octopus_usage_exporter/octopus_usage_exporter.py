@@ -23,9 +23,6 @@ logging.basicConfig(level=logging.INFO,
 version = "0.1.7"
 gauges = {}
 
-prom_port = int(os.environ.get('PROM_PORT', 9120))
-account_number = os.environ.get('ACCOUNT_NUMBER')
-
 meters = []
 
 interval = 1800
@@ -52,7 +49,7 @@ class Settings(BaseSettings):
 
 def start_prometheus_server():
     try:
-        httpd = HTTPServer(("0.0.0.0", prom_port), MetricsHandler)
+        httpd = HTTPServer(("0.0.0.0", Settings().prom_port), MetricsHandler)
     except (OSError) as e:
         logging.error("Failed to start Prometheus server: %s", str(e))
         return
@@ -60,7 +57,7 @@ def start_prometheus_server():
     thread = PrometheusEndpointServer(httpd)
     thread.daemon = True
     thread.start()
-    logging.info("Exporting Prometheus /metrics/ on port %s", prom_port)
+    logging.info("Exporting Prometheus /metrics/ on port %s", Settings().prom_port)
 
 
 def get_device_id(client, gas, electric):

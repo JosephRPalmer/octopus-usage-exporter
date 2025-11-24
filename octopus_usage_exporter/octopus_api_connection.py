@@ -11,7 +11,6 @@ from tenacity import retry, wait_exponential, retry_if_exception_type, after_log
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-logging.getLogger('backoff').addHandler(logging.StreamHandler())
 logging.getLogger("requests.packages.urllib3").setLevel(logging.WARNING)
 requests_logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
