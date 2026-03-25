@@ -7,6 +7,7 @@ class energy_meter(BaseModel):
     last_called: datetime | None = None
     reading_types: list[str] | None = None
     agreement: int | None = None
+    tariff_name: str | None = None
 
 
     def return_labels(self):
