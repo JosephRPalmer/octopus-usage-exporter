@@ -28,6 +28,7 @@ class DummyMeter:
         self.polling_interval = 10
         self.last_called = datetime.now() - timedelta(seconds=20)
         self.agreement = 'agreement123'
+        self.tariff_name = 'Tariff123'
 
     def get_jql_query(self):
         return 'QUERY'
@@ -215,7 +216,8 @@ class TestGetDeviceId(unittest.TestCase):
                     'meterPoint': {
                         'meters': [
                             {'smartImportElectricityMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}},
-                            {'smartImportElectricityMeter': None}
+                            {'smartImportElectricityMeter': None},
+                            {'smartExportElectricityMeter': None}
                         ]
                     },
                     'tariff': { 'displayName': 'ElecTariff' }
