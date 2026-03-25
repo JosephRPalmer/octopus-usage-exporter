@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-version = "0.1.7"
+version = "0.1.8"
 gauges = {}
 
 meters = []
@@ -121,6 +121,10 @@ def get_device_id(client, gas, electric):
                         id
                         deviceId
                     }
+                    smartExportElectricityMeter {
+                        id
+                        deviceId
+                    }
                     }
                 }
                 }
@@ -130,9 +134,11 @@ def get_device_id(client, gas, electric):
 
     if electric:
         electric_query = client.execute(elec_query, variable_values={"accountNumber": Settings().account_number})
-        usable_smart_meters = [m for m in electric_query["account"]["electricityAgreements"][0]["meterPoint"]["meters"]
-                               if m['smartImportElectricityMeter'] is not None]
-        selected_smart_meter_device_id = usable_smart_meters[0]["smartImportElectricityMeter"]["deviceId"]
+        usable_smart_meters= [m for m in electric_query["account"]["electricityAgreements"] if m["meterPoint"]["meters"] and m["meterPoint"]["meters"][0]["smartImportElectricityMeter"] is not None and m["meterPoint"]["meters"][0]["smartExportElectricityMeter"] is None]
+        logging.info("{} usable meters of {} meter(s) on the account".format(len(usable_smart_meters), len([m for m in electric_query["account"]["electricityAgreements"] if m["meterPoint"]["meters"] ])))
+        selected_smart_meter_device_id = usable_smart_meters[0]["meterPoint"]["meters"][0]["smartImportElectricityMeter"]["deviceId"]
+        selected_smart_meter_tariff = usable_smart_meters[0]["tariff"]["displayName"]
+        selected_agreement_id = usable_smart_meters[0]["id"]
         meters.append(electric_meter(
             device_id=selected_smart_meter_device_id,
             meter_type="electric",
@@ -141,24 +147,28 @@ def get_device_id(client, gas, electric):
             reading_types=["consumption", "demand"] +
             (["tariff_expiry", "tariff_days_remaining"] if Settings().tariff_remaining else []) +
             (["tariff_unit_rate", "tariff_standing_charge"] if Settings().tariff_rates else []),
-            agreement=electric_query["account"]["electricityAgreements"][0]["id"]
+            agreement=selected_agreement_id,
+            tariff_name=selected_smart_meter_tariff
         ))
         logging.info("Electricity Meter has been found - {}".format(selected_smart_meter_device_id))
-        logging.info("Electricity Tariff information: {}".format(electric_query["account"]["electricityAgreements"][0]["tariff"]["displayName"]))
+        logging.info("Electricity Tariff information: {}".format(selected_smart_meter_tariff))
     if gas:
         gas_query = client.execute(gas_query, variable_values={"accountNumber": Settings().account_number})
         usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
                                if m['smartGasMeter'] is not None]
         selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
+        selected_smart_meter_tariff = gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]
+        selected_agreement_id = gas_query["account"]["gasAgreements"][0]["id"]
         meters.append(gas_meter(device_id=selected_smart_meter_device_id, meter_type="gas",
                                    polling_interval=1800,
                                    last_called=datetime.now()-timedelta(seconds=1800),
                                    reading_types=["consumption"] +
                                     (["tariff_expiry", "tariff_days_remaining"] if Settings().tariff_remaining else []) +
                                     (["tariff_unit_rate", "tariff_standing_charge"] if Settings().tariff_rates else []),
-                                   agreement=gas_query["account"]["gasAgreements"][0]["id"]))
+                                   agreement=selected_agreement_id,
+                                   tariff_name=selected_smart_meter_tariff))
         logging.info("Gas Meter has been found - {}".format(selected_smart_meter_device_id))
-        logging.info("Gas Tariff information: {}".format(gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]))
+        logging.info("Gas Tariff information: {}".format(selected_smart_meter_tariff))
 
 
 def get_energy_reading(client, meter):
