@@ -215,9 +215,9 @@ class TestGetDeviceId(unittest.TestCase):
                     'id': '12345678910',
                     'meterPoint': {
                         'meters': [
-                            {'smartImportElectricityMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}},
-                            {'smartImportElectricityMeter': None},
-                            {'smartExportElectricityMeter': None}
+                            {'smartImportElectricityMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}, 'smartExportElectricityMeter': None},
+                            {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': None},
+                            {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': None}
                         ]
                     },
                     'tariff': { 'displayName': 'ElecTariff' }
