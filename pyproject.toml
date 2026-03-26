@@ -1,7 +1,7 @@
 [project]
 name = "octopus-usage-exporter"
 authors = [{ name = "Joseph Ryan-Palmer", email = "joseph@ryan-palmer.com" }]
-version = "0.1.7"
+version = "0.1.8"
 description = "Prometheus exporter for Octopus Energy metrics. Works best when coupled with an Octopus Home Mini."
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "gql==4.0.0",
-    "prometheus-client==0.23.1",
+    "prometheus-client==0.24.1",
     "pydantic>=2.12.0",
     "pydantic-settings>=2.11.0",
     "pytest>=8.4.2",
