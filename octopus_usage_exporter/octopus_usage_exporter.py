@@ -145,15 +145,12 @@ def get_device_id(client, gas, electric):
             logging.error("No usable electricity smart meters found on the Octopus Energy account.")
             return
         logging.info("{} usable electricity meters of {} electricity meter(s) on the account".format(len(usable_smart_meters), len([m for m in electric_query["account"]["electricityAgreements"] if m["meterPoint"]["meters"] ])))
-        possible_meters = usable_smart_meters[0]["meterPoint"]["meters"]
-        for meter in possible_meters:
-            for register in meter["registers"]:
-                if register["name"] != "Standard":
-                    possible_meters.remove(meter)
-                    break
+        possible_meters = [meter for meter in usable_smart_meters[0]["meterPoint"]["meters"] if all(register["name"] == "Standard" for register in meter["registers"])]
         if len(possible_meters) == 0:
             logging.error("Meter setup not supported. No smart import electricity meters with a standard register were found.")
             return
+        elif len(possible_meters) > 1:
+            logging.warning("Multiple smart import electricity meters with a standard register were found.")
         selected_smart_meter_device_id = possible_meters[0]["smartImportElectricityMeter"]["deviceId"] 
         selected_smart_meter_tariff = usable_smart_meters[0]["tariff"]["displayName"]
         selected_agreement_id = usable_smart_meters[0]["id"]
