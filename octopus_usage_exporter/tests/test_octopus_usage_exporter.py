@@ -258,6 +258,50 @@ class TestGetDeviceId(unittest.TestCase):
         self.assertEqual(m.meter_type, 'gas')
         self.assertIn('consumption', m.reading_types)
 
+    def test_meters_with_empty_registers_not_selected(self):
+        """Test that meters with empty registers are not selected"""
+        fake_response = {
+            'account': {
+                'electricityAgreements': [{
+                    'id': '12345678910',
+                    'meterPoint': {
+                        'meters': [
+                            {
+                                'smartImportElectricityMeter': {'id': '12367828', 'deviceId': 'ABCXXXXXX'}, 
+                                'smartExportElectricityMeter': None, 
+                                'registers': []  # Empty registers - should NOT be selected
+                            },
+                            {
+                                'smartImportElectricityMeter': {'id': '12367829', 'deviceId': 'XYZXXXXXX'}, 
+                                'smartExportElectricityMeter': None, 
+                                'registers': [
+                                    {
+                                        'id': 'reg1', 
+                                        'name': 'Standard', 
+                                        'identifier': '1',
+                                        'rate': 'STANDARD',
+                                        'is_settlement_register': True
+                                    }
+                                ]  # Has registers - should be selected
+                            }
+                        ]
+                    },
+                    'tariff': { 'displayName': 'ElecTariff' }
+                }]
+            }
+        }
+        client = MagicMock()
+        client.execute.return_value = fake_response
+        with patch('octopus_usage_exporter.octopus_usage_exporter.Settings', side_effect=lambda: DummySettings(interval=900)):
+            exporter_module.get_device_id(client, gas=False, electric=True)
+        
+        # Should only have 1 meter (the one with registers)
+        self.assertEqual(len(exporter_module.meters), 1)
+        m = exporter_module.meters[0]
+        self.assertEqual(m.meter_type, 'electric')
+        # Should have selected the meter with device ID 'XYZXXXXXX' (the one with registers)
+        self.assertEqual(m.device_id, 'XYZXXXXXX')
+
 
 class TestStartPrometheusServer(unittest.TestCase):
     def test_start_success(self):
