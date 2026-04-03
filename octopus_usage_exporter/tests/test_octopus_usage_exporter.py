@@ -215,8 +215,8 @@ class TestGetDeviceId(unittest.TestCase):
                     'id': '12345678910',
                     'meterPoint': {
                         'meters': [
-                            {'smartImportElectricityMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}, 'smartExportElectricityMeter': None, 'registers': [{'id': 'reg1', 'name': 'Export', 'unitRateType': 'export', 'identifier': 'reg1'}]},
-                            {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': None, 'registers': [{'id': 'reg2', 'name': 'Standard', 'unitRateType': 'standard', 'identifier': 'reg2'}]},
+                            {'smartImportElectricityMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}, 'smartExportElectricityMeter': None, 'registers': [{'id': 'reg1', 'name': 'Standard', 'unitRateType': 'standard', 'identifier': 'reg1'}]},
+                            {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': {'id': '12367830', 'deviceId': '00-AA-11-2C-3B-4D-5E-100'}, 'registers': [{'id': 'reg2', 'name': 'Export', 'unitRateType': 'export', 'identifier': 'reg2'}]},
                             {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': None, 'registers': []}
                         ]
                     },
