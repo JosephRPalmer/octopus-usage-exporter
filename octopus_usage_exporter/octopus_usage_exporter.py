@@ -27,6 +27,8 @@ meters = []
 
 interval = 1800
 
+release_notes = ["As of 0.2.0 NG_METRICS will be enabled by default, and will be removed in a future version. Please set this to false if you wish to continue using legacy exporter output."]
+
 class PrometheusEndpointServer(threading.Thread):
     def __init__(self, httpd, *args, **kwargs):
         self.httpd = httpd
@@ -46,6 +48,22 @@ class Settings(BaseSettings):
     tariff_rates: bool = False
     tariff_remaining: bool = False
     interval: int = 1800
+
+def display_settings():
+    logging.info("Exporter settings:")
+    logging.info("Gas Scraping: {}".format("Enabled" if Settings().gas else "Disabled"))
+    logging.info("Electric Scraping: {}".format("Enabled" if Settings().electric else "Disabled"))
+    logging.info("NG Metrics: {}".format("Enabled" if Settings().ng_metrics else "Disabled"))
+    logging.info("Tariff Rates: {}".format("Enabled" if Settings().tariff_rates else "Disabled"))
+    logging.info("Tariff Remaining: {}".format("Enabled" if Settings().tariff_remaining else "Disabled"))
+
+def output_release_notes():
+    logging.info("**********************************************************")
+    logging.info("**********  Release Notes for version {}  **********".format(version))
+    for note in release_notes:
+        logging.info("{}".format(note))
+    logging.info("See verbose release notes at github.com/josephrpalmer/octopus-usage-exporter")
+    logging.info("**********************************************************")
 
 def start_prometheus_server():
     try:
@@ -320,6 +338,8 @@ def interval_rate_check():
 
 
 def exporter():
+    output_release_notes()
+    display_settings()
     interval_rate_check()
     api_connection = octopus_api_connection(api_key=Settings().api_key)
     get_device_id(api_connection, Settings().gas, Settings().electric)
