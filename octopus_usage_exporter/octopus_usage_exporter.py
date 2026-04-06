@@ -83,7 +83,7 @@ def possible_meter_verification(meters, fuel):
         logging.error("Meter setup not supported. No smart import {} meters with a standard register were found.".format(fuel))
         raise Exception("Meter setup not supported. No smart import {} meters with a standard register were found.".format(fuel))
     elif len(possible_meters) > 1:
-        logging.warning("Multiple smart import {} meters with a standard register were found. Using first.".format(fuel))
+        logging.warning("Multiple smart import {} meters with a standard register were found. Using first available meter.".format(fuel))
     
     return possible_meters[0]
 
