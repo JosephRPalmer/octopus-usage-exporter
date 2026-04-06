@@ -81,9 +81,9 @@ def possible_meter_verification(meters, fuel):
     possible_meters = [meter for meter in meters[0]["meterPoint"]["meters"] if meter["registers"] and all(register["name"] == "Standard" for register in meter["registers"])]
     if len(possible_meters) == 0:
         logging.error("Meter setup not supported. No smart import {} meters with a standard register were found.".format(fuel))
-        return
+        raise Exception("Meter setup not supported. No smart import {} meters with a standard register were found.".format(fuel))
     elif len(possible_meters) > 1:
-        logging.warning("Multiple smart import {} meters with a standard register were found.".format(fuel))
+        logging.warning("Multiple smart import {} meters with a standard register were found. Using first meter.".format(fuel))
     
     return possible_meters[0]
 
