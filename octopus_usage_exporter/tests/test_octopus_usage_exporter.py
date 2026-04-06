@@ -217,7 +217,7 @@ class TestGetDeviceId(unittest.TestCase):
                         'meters': [
                             {'smartImportElectricityMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}, 'smartExportElectricityMeter': None, 'registers': [{'id': 'reg1', 'name': 'Standard', 'unitRateType': 'standard', 'identifier': 'reg1'}]},
                             {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': {'id': '12367830', 'deviceId': '00-AA-11-2C-3B-4D-5E-100'}, 'registers': [{'id': 'reg2', 'name': 'Export', 'unitRateType': 'export', 'identifier': 'reg2'}]},
-                            {'smartImportElectricityMeter': None, 'smartExportElectricityMeter': None, 'registers': []}
+                            {'smartImportElectricityMeter': {'id': '12367831', 'deviceId': '00-AA-11-2C-3B-4D-5E-101'}, 'smartExportElectricityMeter': None, 'registers': []}
                         ]
                     },
                     'tariff': { 'displayName': 'ElecTariff' }
@@ -257,6 +257,50 @@ class TestGetDeviceId(unittest.TestCase):
         m = exporter_module.meters[0]
         self.assertEqual(m.meter_type, 'gas')
         self.assertIn('consumption', m.reading_types)
+
+    def test_meters_with_empty_registers_not_selected(self):
+        """Test that meters with empty registers are not selected"""
+        fake_response = {
+            'account': {
+                'electricityAgreements': [{
+                    'id': '12345678910',
+                    'meterPoint': {
+                        'meters': [
+                            {
+                                'smartImportElectricityMeter': {'id': '12367828', 'deviceId': 'ABCXXXXXX'}, 
+                                'smartExportElectricityMeter': None, 
+                                'registers': []  # Empty registers - should NOT be selected
+                            },
+                            {
+                                'smartImportElectricityMeter': {'id': '12367829', 'deviceId': 'XYZXXXXXX'}, 
+                                'smartExportElectricityMeter': None, 
+                                'registers': [
+                                    {
+                                        'id': 'reg1', 
+                                        'name': 'Standard', 
+                                        'identifier': '1',
+                                        'rate': 'STANDARD',
+                                        'is_settlement_register': True
+                                    }
+                                ]  # Has registers - should be selected
+                            }
+                        ]
+                    },
+                    'tariff': { 'displayName': 'ElecTariff' }
+                }]
+            }
+        }
+        client = MagicMock()
+        client.execute.return_value = fake_response
+        with patch('octopus_usage_exporter.octopus_usage_exporter.Settings', side_effect=lambda: DummySettings(interval=900)):
+            exporter_module.get_device_id(client, gas=False, electric=True)
+        
+        # Should only have 1 meter (the one with registers)
+        self.assertEqual(len(exporter_module.meters), 1)
+        m = exporter_module.meters[0]
+        self.assertEqual(m.meter_type, 'electric')
+        # Should have selected the meter with device ID 'XYZXXXXXX' (the one with registers)
+        self.assertEqual(m.device_id, 'XYZXXXXXX')
 
 
 class TestStartPrometheusServer(unittest.TestCase):
