@@ -241,7 +241,8 @@ class TestGetDeviceId(unittest.TestCase):
                     'id': '475839201',
                     'meterPoint': {
                         'meters': [
-                            {'smartGasMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'}},
+                            {'smartGasMeter': {'id': '12367829', 'deviceId': '00-AA-11-2C-3B-4D-5E-99'},  'registers': [{'id': 'reg1', 'name': 'Standard', 'unitRateType': 'standard', 'identifier': 'reg1'}]},
+                            {'smartGasMeter': {'id': '12367830', 'deviceId': '00-AA-11-2C-3B-4D-5E-100'}, 'registers': []},
                             {'smartGasMeter': None}
                         ]
                     },

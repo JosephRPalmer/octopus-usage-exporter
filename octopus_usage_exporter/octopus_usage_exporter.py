@@ -77,6 +77,15 @@ def start_prometheus_server():
     thread.start()
     logging.info("Exporting Prometheus /metrics/ on port %s", Settings().prom_port)
 
+def possible_meter_verification(meters, fuel):
+    possible_meters = [meter for meter in meters[0]["meterPoint"]["meters"] if meter.get("registers") and all(register["name"] == "Standard" for register in meter.get("registers", []))]
+    if len(possible_meters) == 0:
+        logging.error("Meter setup not supported. No smart import {} meters with a standard register were found.".format(fuel))
+        raise Exception("Meter setup not supported. No smart import {} meters with a standard register were found.".format(fuel))
+    elif len(possible_meters) > 1:
+        logging.warning("Multiple smart import {} meters with a standard register were found. Using first available meter.".format(fuel))
+    
+    return possible_meters[0]
 
 def get_device_id(client, gas, electric):
     gas_query = gql("""
@@ -98,6 +107,12 @@ def get_device_id(client, gas, electric):
                     smartGasMeter {
                         id
                         deviceId
+                    }
+                    registers {
+                        id
+                        identifier
+                        name
+                        unitRateType
                     }
                     }
                 }
@@ -163,13 +178,7 @@ def get_device_id(client, gas, electric):
             logging.error("No usable electricity smart meters found on the Octopus Energy account.")
             return
         logging.info("{} usable electricity meters of {} electricity meter(s) on the account".format(len(usable_smart_meters), len([m for m in electric_query["account"]["electricityAgreements"] if m["meterPoint"]["meters"] ])))
-        possible_meters = [meter for meter in usable_smart_meters[0]["meterPoint"]["meters"] if meter["registers"] and all(register["name"] == "Standard" for register in meter["registers"])]
-        if len(possible_meters) == 0:
-            logging.error("Meter setup not supported. No smart import electricity meters with a standard register were found.")
-            return
-        elif len(possible_meters) > 1:
-            logging.warning("Multiple smart import electricity meters with a standard register were found.")
-        selected_smart_meter_device_id = possible_meters[0]["smartImportElectricityMeter"]["deviceId"] 
+        selected_smart_meter_device_id = possible_meter_verification(usable_smart_meters, "electric")["smartImportElectricityMeter"]["deviceId"]
         selected_smart_meter_tariff = usable_smart_meters[0]["tariff"]["displayName"]
         selected_agreement_id = usable_smart_meters[0]["id"]
         meters.append(electric_meter(
@@ -187,9 +196,12 @@ def get_device_id(client, gas, electric):
         logging.info("Electricity Tariff information: {}".format(selected_smart_meter_tariff))
     if gas:
         gas_query = client.execute(gas_query, variable_values={"accountNumber": Settings().account_number})
-        usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"][0]["meterPoint"]["meters"]
-                               if m['smartGasMeter'] is not None]
-        selected_smart_meter_device_id = usable_smart_meters[0]["smartGasMeter"]["deviceId"]
+        usable_smart_meters = [m for m in gas_query["account"]["gasAgreements"] if m["meterPoint"]["meters"] and m["meterPoint"]["meters"][0]["smartGasMeter"] is not None]
+        if len(usable_smart_meters) == 0:
+            logging.error("No usable gas smart meters found on the Octopus Energy account.")
+            return
+        logging.info("{} usable gas meters of {} gas meter(s) on the account".format(len(usable_smart_meters), len([m for m in gas_query["account"]["gasAgreements"] if m["meterPoint"]["meters"] and m["meterPoint"]["meters"][0]["smartGasMeter"] is not None])))
+        selected_smart_meter_device_id = possible_meter_verification(usable_smart_meters, "gas")["smartGasMeter"]["deviceId"]
         selected_smart_meter_tariff = gas_query["account"]["gasAgreements"][0]["tariff"]["displayName"]
         selected_agreement_id = gas_query["account"]["gasAgreements"][0]["id"]
         meters.append(gas_meter(device_id=selected_smart_meter_device_id, meter_type="gas",
