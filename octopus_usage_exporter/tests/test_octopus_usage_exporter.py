@@ -76,6 +76,22 @@ class TestElectricityTariffParser(unittest.TestCase):
         self.assertEqual(out["tariff_standing_charge"], 0.25)
         self.assertIn("tariff_days_remaining", out)
 
+    def test_unit_rates_open_ended_rate(self):
+        now = datetime.now().astimezone()
+        tariff = {
+            "tariff": {
+                "isExport": False,
+                "unitRates": [
+                    {"validFrom": (now - timedelta(days=1)).isoformat(), "validTo": (now - timedelta(hours=1)).isoformat(), "value": 0.07},
+                    {"validFrom": (now - timedelta(hours=1)).isoformat(), "validTo": None, "value": 0.301},
+                ],
+                "standingCharge": 0.25,
+            },
+            "validTo": None,
+        }
+        out = exporter_module.electricity_tariff_parser(tariff)
+        self.assertAlmostEqual(out["tariff_unit_rate"], 0.301)
+
     def test_standard_unit_rate(self):
         now = datetime.now().astimezone()
         tariff = {
