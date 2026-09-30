@@ -6,7 +6,7 @@
 ![GitHub License](https://img.shields.io/github/license/josephrpalmer/octopus-usage-exporter)
 
 
-Prometheus exporter for Octopus Energy metrics. Works best when coupled with an [Octopus Home Mini](https://octopus.energy/blog/octopus-home-mini/)
+Prometheus exporter for Octopus Energy metrics. **Requires an [Octopus Home Mini](https://octopus.energy/blog/octopus-home-mini/)**
 
 Returns:
 
