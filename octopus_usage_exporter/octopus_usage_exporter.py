@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-version = "0.1.8"
+version = "0.1.9"
 gauges = {}
 
 meters = []
@@ -280,9 +280,10 @@ def electricity_tariff_parser(tariff):
         # Find the unit rate valid for now
         current_rate = None
         for rate in t["unitRates"]:
-            valid_from = from_iso(rate["validFrom"])
-            valid_to = from_iso(rate["validTo"])
-            if valid_from <= now and now < valid_to:
+            # A null validFrom/validTo means the rate is open-ended on that side
+            valid_from = from_iso(rate["validFrom"]) if rate.get("validFrom") else None
+            valid_to = from_iso(rate["validTo"]) if rate.get("validTo") else None
+            if (valid_from is None or valid_from <= now) and (valid_to is None or now < valid_to):
                 current_rate = rate["value"]
                 break
         output_map["tariff_unit_rate"] = current_rate
