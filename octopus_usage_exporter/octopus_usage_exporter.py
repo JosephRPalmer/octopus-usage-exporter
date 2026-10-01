@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-version = "0.1.8"
+version = "0.1.9"
 gauges = {}
 
 meters = []
